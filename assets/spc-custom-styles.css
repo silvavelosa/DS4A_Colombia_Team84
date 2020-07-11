@@ -10,14 +10,21 @@
 - Media Queries
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
+:root {
+  --main-bg-color: #afd9e6;
+  --main-tile-color: #3a8ea8;
+  --main-tile-color: #f5fcff;
+  --tabs-color: #dff4fb;
+}
+
+
 #app-container * {
   box-sizing: border-box;
   -moz-box-sizing: border-box;
 }
 
 body {
-  background-color: rgb(100, 0, 0);;
-  color: #f3f5f4;
+  background-color: var(--main-bg-color);
   font-family: "Open Sans", sans-serif;
   width: 100%;
   height: 100vh;
@@ -36,7 +43,7 @@ body {
 
 .banner {
   height: fit-content;
-  background-color: #1e2130;
+  background-color: #2f2935;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -44,6 +51,8 @@ body {
   border-bottom: 1px solid #4B5460;
   padding: 1rem 10rem;
   width: 100%;
+  position: fixed;
+  z-index: 1;
 }
 
 
@@ -54,11 +63,13 @@ body {
   font-size: 2rem;
   letter-spacing: 0.1rem;
   text-transform: uppercase;
+  color: #fafafa;
 }
 
 .banner h6 {
   font-size: 1.6rem;
   line-height: 1;
+  color: #fafafa;
 }
 
 .banner button {
@@ -68,7 +79,7 @@ body {
   line-height: 3rem;
 }
 
-#banner-logo {
+.banner-logo {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -81,8 +92,13 @@ body {
 }
 
 .banner Img {
-  height: 3rem;
+  height: 6rem;
   margin: 0px 10px;
+}
+
+.content-tile {
+  border-radius: 0.5em;
+  background-color: var(--main-tile-color);
 }
 
 /* The Modal (background) */
@@ -134,7 +150,7 @@ body {
 }
 
 .custom-tabs {
-  background-color: #1E2130;
+  background-color: var(--main-bg-color);
   text-transform: uppercase;
   font-weight: 600;
   font-size: 14px;
@@ -143,11 +159,11 @@ body {
 }
 
 #Specs-tab.custom-tab, #Control-chart-tab.custom-tab {
-  background-color: #161a28;
+  background-color: var(--main-tile-color);
   letter-spacing: 1px;
   color: inherit;
   border: 0;
-  border-bottom: #1E2130 solid 4px !important;
+  border-bottom: var(--main-bg-color) solid 4px !important;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -157,19 +173,23 @@ body {
 }
 
 #Specs-tab.custom-tab--selected, #Control-chart-tab.custom-tab--selected {
-  border-bottom: #91dfd2 solid 4px !important;
+  border-bottom: #42756d solid 4px !important;
 }
 
 #Specs-tab.custom-tab {
+  background-color: var(--tabs-color);
+  border-radius: 2rem;
   margin-right: 3px;
 }
 
 #Control-chart-tab.custom-tab {
+  background-color: var(--tabs-color);
+  border-radius: 2rem;
   margin-left: 3px;
 }
 
 .section-banner {
-  color: darkgray;
+  color: #101010;
   font-size: 1.5rem;
   text-align: left;
   padding: 1rem 2rem;
@@ -206,7 +226,7 @@ body {
 }
 
 .metric-row:hover {
-  background-color: #0F1328;
+  background-color: var(--tabs-color);
 }
 
 /*Dash Daq Graduatebar */
@@ -219,7 +239,7 @@ body {
 #Overlay_OOC_graph > div > div,
 #Volume_OOC_graph > div > div {
   width: 100%;
-  background-color: #1e2130 !important;
+  background-color: #2f2935 !important;
 }
 
 #quick-stats.row {
@@ -233,7 +253,7 @@ body {
   position: relative;
   z-index: 4;
   width: 100%;
-  border-top: #1E2130 solid 0.8rem;
+  margin-top: 0.8rem;
 }
 
 #metric-summary-session {
@@ -244,12 +264,12 @@ body {
 #ooc-piechart-outer {
   height: 100%;
   margin: 0;
-  border-left: #1E2130 solid 0.8rem;
+  margin-left: 0.8rem;
   flex: 1 1 auto;
 }
 
-#piechart.plot-container plotly {
-  height: 100%;
+#piechart2 .main-svg{
+  background: #00000000 !important;
 }
 
 #card-1, #card-2, #utility-card {
@@ -415,11 +435,12 @@ body {
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
 #app-container {
-  background: #161a28;
   margin: 1rem 2rem;
   max-width: 100%;
   width: 100%;
-  height: calc(100vh - 10rem - 1px);
+  min-height: calc(100vh - 10rem - 1px);
+  height: 100%;
+  margin-top: 9rem;
 }
 
 #app-content {
@@ -463,8 +484,8 @@ body {
   display: flex;
   flex-direction: column;
   flex: 3 1;
-  max-width: calc(75%);
-  width: 70%;
+  max-width: calc(55%);
+  width: 50%;
 }
 
 
@@ -475,10 +496,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  border-right: #1E2130 solid 0.8rem;
+  margin-right: 0.8rem;
   flex: 1 1;
   padding: 2rem;
-  max-width: 25%;
+  max-width: 20%;
 }
 
 #operator-led {
@@ -512,7 +533,7 @@ body {
 }
 
 #progress-gauge > div > div > div > div {
-  color: white !important;
+  color: rgb(50, 50, 50) !important;
 }
 
 /*pressure-gauge track*/
@@ -608,12 +629,8 @@ body {
     font-size: 1.3rem;
   }
 
-  #banner-logo button {
-    display: none;
-  }
-
   .banner Img {
-    height: 3rem;
+    height: 6rem;
     margin: 1rem;
   }
 
@@ -716,8 +733,8 @@ body {
     height: fit-content !important;
     justify-content: space-between;
     align-items: flex-start;
-    border-top: 1px solid #1E2130;
-    border-bottom: 1px solid #1E2130;
+    border-top: 1px solid #2f2935;
+    border-bottom: 1px solid #2f2935;
   }
 
   #metric-rows .column, #metric-rows .columns {

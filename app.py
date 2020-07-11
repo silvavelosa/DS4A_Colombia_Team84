@@ -1,6 +1,8 @@
 import os
 import pathlib
 
+
+import base64
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -8,8 +10,14 @@ from dash.dependencies import Input, Output, State
 import dash_table
 import plotly.graph_objs as go
 import dash_daq as daq
+from wordcloud import WordCloud
 
+
+from io import BytesIO
 import pandas as pd
+import joblib as jb
+
+    
 
 app = dash.Dash(
     __name__,
@@ -17,8 +25,20 @@ app = dash.Dash(
 )
 server = app.server
 app.config["suppress_callback_exceptions"] = True
+app.title = 'Twitter sentyment analysis - Dashboard'
 
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
+
+
+df_tweets=jb.load("tweets_sentiment_parse.joblib")
+sentiment=df_tweets.groupby('sentiment').count()['watson_sentiment'].reset_index()
+date=df_tweets.groupby([df_tweets.date.dt.to_period("M"),'sentiment']).count()\
+    ['watson_sentiment'].reset_index()
+
+date['date']=date.date.map(str)
+df2=date.pivot(index='date', columns='sentiment', values='watson_sentiment')
+dfm= ''.join(df_tweets.text)
+
 df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "spc_data.csv")))
 
 params = list(df)
@@ -32,6 +52,17 @@ suffix_ooc_n = "_OOC_number"
 suffix_ooc_g = "_OOC_graph"
 suffix_indicator = "_indicator"
 
+def plot_wordcloud(data):
+    wc = WordCloud(max_font_size=100, max_words=100, background_color="white",\
+                          scale = 10,width=480, height=360).generate(data)
+    return wc.to_image()
+
+@app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
+def make_image(b):
+    img = BytesIO()
+    plot_wordcloud(data=dfm).save(img, format='PNG')
+    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
+
 
 def build_banner():
     return html.Div(
@@ -39,19 +70,24 @@ def build_banner():
         className="banner",
         children=[
             html.Div(
-                id="banner-text",
+                className="banner-logo",
                 children=[
-                    html.H5("Manufacturing SPC Dashboard"),
-                    html.H6("Process Control and Exception Reporting"),
+                    html.Img(id="logoTM", src=app.get_asset_url("team84.png")),
                 ],
             ),
             html.Div(
-                id="banner-logo",
+                className="app-header",
+                id="banner-text",
                 children=[
-                    html.Button(
-                        id="learn-more-button", children="LEARN MORE", n_clicks=0
-                    ),
-                    html.Img(id="logo", src=app.get_asset_url("dash-logo-new.png")),
+                    html.H5('"CAJAS DE COMPENSACIÓN" TWITTER SENTIMENT'),
+                    html.H6("Analysis of user's Tweets from a week in June 2020"),
+                ],
+            ),
+            html.Div(
+                className="banner-logo",
+                children=[
+                    html.Img(id="logoMT", src=app.get_asset_url("mintic.png")),
+                    html.Img(id="logoDS", src=app.get_asset_url("ds4a2.png")),
                 ],
             ),
         ],
@@ -273,37 +309,51 @@ def generate_modal():
 def build_quick_stats_panel():
     return html.Div(
         id="quick-stats",
-        className="row",
+        className="row content-tile",
         children=[
             html.Div(
                 id="card-1",
                 children=[
-                    html.P("Operator ID"),
+                    html.P("Total Tweet Count"),
                     daq.LEDDisplay(
                         id="operator-led",
-                        value="1704",
+                        value=str(len(df_tweets)),
                         color="#92e0d3",
                         backgroundColor="#1e2130",
-                        size=50,
+                        size=40,
                     ),
                 ],
             ),
             html.Div(
                 id="card-2",
                 children=[
-                    html.P("Time to completion"),
-                    daq.Gauge(
-                        id="progress-gauge",
-                        max=max_length * 2,
-                        min=0,
-                        showCurrentValue=True,  # default size 200 pixel
+                    html.P("Total User Count"),
+                    daq.LEDDisplay(
+                        id="operator-led",
+                        value="7129",
+                        color="#92e0d3",
+                        backgroundColor="#1e2130",
+                        size=40,
                     ),
                 ],
             ),
-            html.Div(
-                id="utility-card",
-                children=[daq.StopButton(id="stop-button", size=160, n_clicks=0)],
-            ),
+            #html.Div(
+                #id="card-2",
+                #children=[
+                    #html.P("Time to completion"),
+                    #daq.Gauge(
+                        #id="progress-gauge",
+                        #max=max_length * 2,
+                        #min=0,
+                        #showCurrentValue=True,  # default size 200 pixel
+                    #),
+                #],
+            #),
+            #html.Div(
+                #id="utility-card",
+                #children=[daq.StopButton(id="stop-button", size=160, #n_clicks=0)],
+            #),"""
+
         ],
     )
 
@@ -320,25 +370,15 @@ def build_top_panel(stopped_interval):
             # Metrics summary
             html.Div(
                 id="metric-summary-session",
-                className="eight columns",
+                className="content-tile eight columns",
                 children=[
-                    generate_section_banner("Process Control Metrics Summary"),
+                    generate_section_banner("Most Frequent words"),
                     html.Div(
                         id="metric-div",
                         children=[
-                            generate_metric_list_header(),
-                            html.Div(
-                                id="metric-rows",
-                                children=[
-                                    generate_metric_row_helper(stopped_interval, 1),
-                                    generate_metric_row_helper(stopped_interval, 2),
-                                    generate_metric_row_helper(stopped_interval, 3),
-                                    generate_metric_row_helper(stopped_interval, 4),
-                                    generate_metric_row_helper(stopped_interval, 5),
-                                    generate_metric_row_helper(stopped_interval, 6),
-                                    generate_metric_row_helper(stopped_interval, 7),
-                                ],
-                            ),
+                            html.Img(id="image_wc",style={
+                            "width": "100%"
+                            }),
                         ],
                     ),
                 ],
@@ -346,12 +386,21 @@ def build_top_panel(stopped_interval):
             # Piechart
             html.Div(
                 id="ooc-piechart-outer",
-                className="four columns",
+                className="content-tile four columns",
                 children=[
-                    generate_section_banner("% OOC per Parameter"),
-                    generate_piechart(),
-                ],
+                    generate_section_banner("Sentiment breakdown"),
+                    dcc.Graph(
+                        id='piechart2',
+                        figure= dict({
+                            "data": [{"type": "pie",
+                                    "labels": sentiment['sentiment'],
+                                    "values": sentiment['watson_sentiment']}],
+                            "layout": {
+                                    'showlegend': False}})
+                    ),
+               ],
             ),
+            
         ],
     )
 
@@ -365,7 +414,7 @@ def generate_piechart():
                     "labels": [],
                     "values": [],
                     "type": "pie",
-                    "marker": {"line": {"color": "white", "width": 1}},
+                    "marker": {"line": {"color": "#000000", "width": 1}},
                     "hoverinfo": "label",
                     "textinfo": "label",
                 }
@@ -375,7 +424,7 @@ def generate_piechart():
                 "showlegend": True,
                 "paper_bgcolor": "rgba(0,0,0,0)",
                 "plot_bgcolor": "rgba(0,0,0,0)",
-                "font": {"color": "white"},
+                "font": {"color": "#000000"},
                 "autosize": True,
             },
         },
@@ -545,34 +594,31 @@ def generate_metric_row(id, style, col1, col2, col3, col4, col5, col6):
 def build_chart_panel():
     return html.Div(
         id="control-chart-container",
-        className="twelve columns",
+        className="content-tile twelve columns",
         children=[
-            generate_section_banner("Live SPC Chart"),
+            generate_section_banner("Sentiment over time"),
             dcc.Graph(
-                id="control-chart-live",
-                figure=go.Figure(
-                    {
-                        "data": [
-                            {
-                                "x": [],
-                                "y": [],
-                                "mode": "lines+markers",
-                                "name": params[1],
-                            }
-                        ],
-                        "layout": {
-                            "paper_bgcolor": "rgba(0,0,0,0)",
-                            "plot_bgcolor": "rgba(0,0,0,0)",
-                            "xaxis": dict(
-                                showline=False, showgrid=False, zeroline=False
-                            ),
-                            "yaxis": dict(
-                                showgrid=False, showline=False, zeroline=False
-                            ),
-                            "autosize": True,
-                        },
-                    }
-                ),
+                id='example-graph_2',
+                figure= dict({
+                    "data": [{"mode": "lines+markers",
+                            "x": df2.index,
+                            "y": df2.positive,
+                            "name":'positive',
+                            "line": {"color": "#05d44d"}
+                            },
+                            {"mode": "lines+markers",
+                            "x": df2.index,
+                            "y": df2.negative,
+                            "name":'negative',
+                            "line": {"color": "#de1738"}
+                            },
+                            {"mode": "lines+markers",
+                            "x": df2.index,
+                            "y": df2.neutral,
+                            "name":'neutral',
+                            "line": {"color": "#f4d44d"}
+                            }]
+                })
             ),
         ],
     )
@@ -863,7 +909,10 @@ app.layout = html.Div(
 )
 def render_tab_content(tab_switch, stopped_interval):
     if tab_switch == "tab1":
-        return build_tab_1(), stopped_interval
+        return  html.Div(
+            className="content-tile",
+            children=build_tab_1()
+            ), stopped_interval
     return (
         html.Div(
             id="status-container",
@@ -872,6 +921,19 @@ def render_tab_content(tab_switch, stopped_interval):
                 html.Div(
                     id="graphs-container",
                     children=[build_top_panel(stopped_interval), build_chart_panel()],
+                ),
+                html.Div(
+                    className = "content-tile",
+                    id="right-bar-summary",
+                    style={ "width":        "25%",
+                            "margin-left": "0.8rem",
+                            "flex": "1 1",
+                            "padding": "2rem",
+                            "max-width": "25%",
+                    },
+                    children=[
+                        #TweetList
+                    ],
                 ),
             ],
         ),
@@ -913,15 +975,13 @@ def stop_production(n_clicks, current):
 # ======= Callbacks for modal popup =======
 @app.callback(
     Output("markdown", "style"),
-    [Input("learn-more-button", "n_clicks"), Input("markdown_close", "n_clicks")],
+    [Input("markdown_close", "n_clicks")],
 )
-def update_click_output(button_click, close_click):
+def update_click_output(button_click):
     ctx = dash.callback_context
 
     if ctx.triggered:
         prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        if prop_id == "learn-more-button":
-            return {"display": "block"}
 
     return {"display": "none"}
 
@@ -1154,7 +1214,7 @@ def update_piechart(interval, stored_data):
         return {
             "data": [],
             "layout": {
-                "font": {"color": "white"},
+                "font": {"color": "#000000"},
                 "paper_bgcolor": "rgba(0,0,0,0)",
                 "plot_bgcolor": "rgba(0,0,0,0)",
             },
@@ -1181,7 +1241,7 @@ def update_piechart(interval, stored_data):
                 "labels": params[1:],
                 "values": values,
                 "type": "pie",
-                "marker": {"colors": colors, "line": dict(color="white", width=2)},
+                "marker": {"colors": colors, "line": dict(color="#323232", width=0.5)},
                 "hoverinfo": "label",
                 "textinfo": "label",
             }
@@ -1189,7 +1249,7 @@ def update_piechart(interval, stored_data):
         "layout": {
             "margin": dict(t=20, b=50),
             "uirevision": True,
-            "font": {"color": "white"},
+            "font": {"color": "#323232"},
             "showlegend": False,
             "paper_bgcolor": "rgba(0,0,0,0)",
             "plot_bgcolor": "rgba(0,0,0,0)",
