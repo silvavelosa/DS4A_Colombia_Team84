@@ -106,7 +106,7 @@ def build_tabs():
                 children=[ 
                     dcc.Tab(
                         id="Control-chart-tab",
-                        label="Control Charts Dashboard",
+                        label="Dashboard",
                         value="tab2",
                         className="custom-tab",
                         selected_className="custom-tab--selected",
@@ -311,6 +311,7 @@ def build_quick_stats_panel():
         id="quick-stats",
         className="row content-tile",
         children=[
+            generate_section_banner("Tweets Summary"),
             html.Div(
                 id="card-1",
                 children=[

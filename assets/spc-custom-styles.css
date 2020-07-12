@@ -163,7 +163,7 @@ body {
   letter-spacing: 1px;
   color: inherit;
   border: 0;
-  border-bottom: var(--main-bg-color) solid 4px !important;
+  margin-bottom: 1em !important;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -173,19 +173,21 @@ body {
 }
 
 #Specs-tab.custom-tab--selected, #Control-chart-tab.custom-tab--selected {
-  border-bottom: #42756d solid 4px !important;
+-webkit-box-shadow: 10px 10px 16px 0px rgba(11, 27, 34, 0.75);
+-moz-box-shadow: 10px 10px 16px 0px rgba(0,0,0,0.75);
+box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
 }
 
 #Specs-tab.custom-tab {
   background-color: var(--tabs-color);
   border-radius: 2rem;
-  margin-right: 3px;
+  margin: 3px;
 }
 
 #Control-chart-tab.custom-tab {
   background-color: var(--tabs-color);
   border-radius: 2rem;
-  margin-left: 3px;
+  margin: 3px;
 }
 
 .section-banner {
@@ -194,6 +196,7 @@ body {
   text-align: left;
   padding: 1rem 2rem;
   border-bottom: 1px solid #4b5460;
+  width: 100%;
 }
 
 /* Main Dashboard Tab
