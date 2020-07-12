@@ -103,18 +103,18 @@ def build_tabs():
                 id="app-tabs",
                 value="tab2",
                 className="custom-tabs",
-                children=[
-                    dcc.Tab(
-                        id="Specs-tab",
-                        label="Specification Settings",
-                        value="tab1",
-                        className="custom-tab",
-                        selected_className="custom-tab--selected",
-                    ),
+                children=[ 
                     dcc.Tab(
                         id="Control-chart-tab",
                         label="Control Charts Dashboard",
                         value="tab2",
+                        className="custom-tab",
+                        selected_className="custom-tab--selected",
+                    ),
+                    dcc.Tab(
+                        id="Specs-tab",
+                        label="Team Information",
+                        value="tab1",
                         className="custom-tab",
                         selected_className="custom-tab--selected",
                     ),
