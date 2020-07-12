@@ -55,7 +55,7 @@ suffix_indicator = "_indicator"
 
 def plot_wordcloud(data):
     wc = WordCloud(max_font_size=100, max_words=100, background_color="white",\
-                          scale = 10,width=480, height=360).generate(data)
+                          scale = 10,width=480, height=300).generate(data)
     return wc.to_image()
 
 @app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
@@ -379,7 +379,8 @@ def build_top_panel(stopped_interval):
                         id="metric-div",
                         children=[
                             html.Img(id="image_wc",style={
-                            "width": "100%"
+                            "width": "100%",
+                            "height":"100%"
                             }),
                         ],
                     ),
