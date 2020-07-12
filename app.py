@@ -32,6 +32,7 @@ APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 
 df_tweets=jb.load("tweets_sentiment_parse.joblib")
 sentiment=df_tweets.groupby('sentiment').count()['watson_sentiment'].reset_index()
+sentiment=sentiment[sentiment.sentiment.isin (['negative','neutral','positive'])]
 date=df_tweets.groupby([df_tweets.date.dt.to_period("M"),'sentiment']).count()\
     ['watson_sentiment'].reset_index()
 
@@ -394,9 +395,18 @@ def build_top_panel(stopped_interval):
                         figure= dict({
                             "data": [{"type": "pie",
                                     "labels": sentiment['sentiment'],
-                                    "values": sentiment['watson_sentiment']}],
-                            "layout": {
-                                    'showlegend': False}})
+                                    "values": sentiment['watson_sentiment'],
+                                     "marker": {'colors': [
+                                                 '#de1738',
+                                                 '#f4d44d',
+                                                 '#05d44d'
+                                                ]},
+                                     }],
+                            "layout": {"margin": dict(l=20, r=20, t=20, b=20),
+                                       "autosize": True,
+                                       "showlegend":False,
+                                     }
+                        })
                     ),
                ],
             ),
