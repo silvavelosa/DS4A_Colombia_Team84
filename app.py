@@ -55,7 +55,7 @@ suffix_indicator = "_indicator"
 
 def plot_wordcloud(data):
     wc = WordCloud(max_font_size=100, max_words=100, background_color="white",\
-                          scale = 10,width=480, height=300).generate(data)
+                          scale = 10,width=300, height=300).generate(data)
     return wc.to_image()
 
 @app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
@@ -127,48 +127,8 @@ def build_tabs():
 
 def init_df():
     ret = {}
-    for col in list(df[1:]):
-        data = df[col]
-        stats = data.describe()
-
-        std = stats["std"].tolist()
-        ucl = (stats["mean"] + 3 * stats["std"]).tolist()
-        lcl = (stats["mean"] - 3 * stats["std"]).tolist()
-        usl = (stats["mean"] + stats["std"]).tolist()
-        lsl = (stats["mean"] - stats["std"]).tolist()
-
-        ret.update(
-            {
-                col: {
-                    "count": stats["count"].tolist(),
-                    "data": data,
-                    "mean": stats["mean"].tolist(),
-                    "std": std,
-                    "ucl": round(ucl, 3),
-                    "lcl": round(lcl, 3),
-                    "usl": round(usl, 3),
-                    "lsl": round(lsl, 3),
-                    "min": stats["min"].tolist(),
-                    "max": stats["max"].tolist(),
-                    "ooc": populate_ooc(data, ucl, lcl),
-                }
-            }
-        )
 
     return ret
-
-
-def populate_ooc(data, ucl, lcl):
-    ooc_count = 0
-    ret = []
-    for i in range(len(data)):
-        if data[i] >= ucl or data[i] <= lcl:
-            ooc_count += 1
-            ret.append(ooc_count / (i + 1))
-        else:
-            ret.append(ooc_count / (i + 1))
-    return ret
-
 
 state_dict = init_df()
 
@@ -189,123 +149,7 @@ def build_tab_1():
                 "Use historical control limits to establish a benchmark, or set new values."
             ),
         ),
-        html.Div(
-            id="settings-menu",
-            children=[
-                html.Div(
-                    id="metric-select-menu",
-                    # className='five columns',
-                    children=[
-                        html.Label(id="metric-select-title", children="Select Metrics"),
-                        html.Br(),
-                        dcc.Dropdown(
-                            id="metric-select-dropdown",
-                            options=list(
-                                {"label": param, "value": param} for param in params[1:]
-                            ),
-                            value=params[1],
-                        ),
-                    ],
-                ),
-                html.Div(
-                    id="value-setter-menu",
-                    # className='six columns',
-                    children=[
-                        html.Div(id="value-setter-panel"),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Update", id="value-setter-set-btn"),
-                                html.Button(
-                                    "View current setup",
-                                    id="value-setter-view-btn",
-                                    n_clicks=0,
-                                ),
-                            ],
-                        ),
-                        html.Div(
-                            id="value-setter-view-output", className="output-datatable"
-                        ),
-                    ],
-                ),
-            ],
-        ),
     ]
-
-
-ud_usl_input = daq.NumericInput(
-    id="ud_usl_input", className="setting-input", size=200, max=9999999
-)
-ud_lsl_input = daq.NumericInput(
-    id="ud_lsl_input", className="setting-input", size=200, max=9999999
-)
-ud_ucl_input = daq.NumericInput(
-    id="ud_ucl_input", className="setting-input", size=200, max=9999999
-)
-ud_lcl_input = daq.NumericInput(
-    id="ud_lcl_input", className="setting-input", size=200, max=9999999
-)
-
-
-def build_value_setter_line(line_num, label, value, col3):
-    return html.Div(
-        id=line_num,
-        children=[
-            html.Label(label, className="four columns"),
-            html.Label(value, className="four columns"),
-            html.Div(col3, className="four columns"),
-        ],
-        className="row",
-    )
-
-
-def generate_modal():
-    return html.Div(
-        id="markdown",
-        className="modal",
-        children=(
-            html.Div(
-                id="markdown-container",
-                className="markdown-container",
-                children=[
-                    html.Div(
-                        className="close-container",
-                        children=html.Button(
-                            "Close",
-                            id="markdown_close",
-                            n_clicks=0,
-                            className="closeButton",
-                        ),
-                    ),
-                    html.Div(
-                        className="markdown-text",
-                        children=dcc.Markdown(
-                            children=(
-                                """
-                        ###### What is this mock app about?
-
-                        This is a dashboard for monitoring real-time process quality along manufacture production line.
-
-                        ###### What does this app shows
-
-                        Click on buttons in `Parameter` column to visualize details of measurement trendlines on the bottom panel.
-
-                        The sparkline on top panel and control chart on bottom panel show Shewhart process monitor using mock data.
-                        The trend is updated every other second to simulate real-time measurements. Data falling outside of six-sigma control limit are signals indicating 'Out of Control(OOC)', and will
-                        trigger alerts instantly for a detailed checkup.
-                        
-                        Operators may stop measurement by clicking on `Stop` button, and edit specification parameters by clicking specification tab.
-
-                    """
-                            )
-                        ),
-                    ),
-                ],
-            )
-        ),
-    )
-
 
 def build_quick_stats_panel():
     return html.Div(
@@ -361,7 +205,7 @@ def build_quick_stats_panel():
 
 
 def generate_section_banner(title):
-    return html.Div(className="section-banner", children=title)
+    return html.Div(className="section-banner", children=title,)
 
 
 def build_top_panel(stopped_interval):
@@ -369,27 +213,29 @@ def build_top_panel(stopped_interval):
         id="top-section-container",
         className="row",
         children=[
-            # Metrics summary
+            
+            # Word cloud
             html.Div(
                 id="metric-summary-session",
-                className="content-tile eight columns",
+                className="content-tile six columns",
                 children=[
                     generate_section_banner("Most Frequent words"),
                     html.Div(
                         id="metric-div",
                         children=[
                             html.Img(id="image_wc",style={
-                            "width": "100%",
-                            "height":"100%"
+                            "width": "95%",
+                            "height":"95%"
                             }),
                         ],
                     ),
                 ],
             ),
+            
             # Piechart
             html.Div(
                 id="ooc-piechart-outer",
-                className="content-tile four columns",
+                className="content-tile six columns",
                 children=[
                     generate_section_banner("Sentiment breakdown"),
                     dcc.Graph(
@@ -404,203 +250,20 @@ def build_top_panel(stopped_interval):
                                                  '#05d44d'
                                                 ]},
                                      }],
-                            "layout": {"margin": dict(l=20, r=20, t=20, b=20),
+                            "layout": {"margin": dict(l=20, r=20, t=20, b=30),
                                        "autosize": True,
                                        "showlegend":False,
                                      }
                         })
                     ),
                ],
+                
             ),
             
         ],
     )
 
 
-def generate_piechart():
-    return dcc.Graph(
-        id="piechart",
-        figure={
-            "data": [
-                {
-                    "labels": [],
-                    "values": [],
-                    "type": "pie",
-                    "marker": {"line": {"color": "#000000", "width": 1}},
-                    "hoverinfo": "label",
-                    "textinfo": "label",
-                }
-            ],
-            "layout": {
-                "margin": dict(l=20, r=20, t=20, b=20),
-                "showlegend": True,
-                "paper_bgcolor": "rgba(0,0,0,0)",
-                "plot_bgcolor": "rgba(0,0,0,0)",
-                "font": {"color": "#000000"},
-                "autosize": True,
-            },
-        },
-    )
-
-
-# Build header
-def generate_metric_list_header():
-    return generate_metric_row(
-        "metric_header",
-        {"height": "3rem", "margin": "1rem 0", "textAlign": "center"},
-        {"id": "m_header_1", "children": html.Div("Parameter")},
-        {"id": "m_header_2", "children": html.Div("Count")},
-        {"id": "m_header_3", "children": html.Div("Sparkline")},
-        {"id": "m_header_4", "children": html.Div("OOC%")},
-        {"id": "m_header_5", "children": html.Div("%OOC")},
-        {"id": "m_header_6", "children": "Pass/Fail"},
-    )
-
-
-def generate_metric_row_helper(stopped_interval, index):
-    item = params[index]
-
-    div_id = item + suffix_row
-    button_id = item + suffix_button_id
-    sparkline_graph_id = item + suffix_sparkline_graph
-    count_id = item + suffix_count
-    ooc_percentage_id = item + suffix_ooc_n
-    ooc_graph_id = item + suffix_ooc_g
-    indicator_id = item + suffix_indicator
-
-    return generate_metric_row(
-        div_id,
-        None,
-        {
-            "id": item,
-            "className": "metric-row-button-text",
-            "children": html.Button(
-                id=button_id,
-                className="metric-row-button",
-                children=item,
-                title="Click to visualize live SPC chart",
-                n_clicks=0,
-            ),
-        },
-        {"id": count_id, "children": "0"},
-        {
-            "id": item + "_sparkline",
-            "children": dcc.Graph(
-                id=sparkline_graph_id,
-                style={"width": "100%", "height": "95%"},
-                config={
-                    "staticPlot": False,
-                    "editable": False,
-                    "displayModeBar": False,
-                },
-                figure=go.Figure(
-                    {
-                        "data": [
-                            {
-                                "x": state_dict["Batch"]["data"].tolist()[
-                                    :stopped_interval
-                                ],
-                                "y": state_dict[item]["data"][:stopped_interval],
-                                "mode": "lines+markers",
-                                "name": item,
-                                "line": {"color": "#f4d44d"},
-                            }
-                        ],
-                        "layout": {
-                            "uirevision": True,
-                            "margin": dict(l=0, r=0, t=4, b=4, pad=0),
-                            "xaxis": dict(
-                                showline=False,
-                                showgrid=False,
-                                zeroline=False,
-                                showticklabels=False,
-                            ),
-                            "yaxis": dict(
-                                showline=False,
-                                showgrid=False,
-                                zeroline=False,
-                                showticklabels=False,
-                            ),
-                            "paper_bgcolor": "rgba(0,0,0,0)",
-                            "plot_bgcolor": "rgba(0,0,0,0)",
-                        },
-                    }
-                ),
-            ),
-        },
-        {"id": ooc_percentage_id, "children": "0.00%"},
-        {
-            "id": ooc_graph_id + "_container",
-            "children": daq.GraduatedBar(
-                id=ooc_graph_id,
-                color={
-                    "ranges": {
-                        "#92e0d3": [0, 3],
-                        "#f4d44d ": [3, 7],
-                        "#f45060": [7, 15],
-                    }
-                },
-                showCurrentValue=False,
-                max=15,
-                value=0,
-            ),
-        },
-        {
-            "id": item + "_pf",
-            "children": daq.Indicator(
-                id=indicator_id, value=True, color="#91dfd2", size=12
-            ),
-        },
-    )
-
-
-def generate_metric_row(id, style, col1, col2, col3, col4, col5, col6):
-    if style is None:
-        style = {"height": "8rem", "width": "100%"}
-
-    return html.Div(
-        id=id,
-        className="row metric-row",
-        style=style,
-        children=[
-            html.Div(
-                id=col1["id"],
-                className="one column",
-                style={"margin-right": "2.5rem", "minWidth": "50px"},
-                children=col1["children"],
-            ),
-            html.Div(
-                id=col2["id"],
-                style={"textAlign": "center"},
-                className="one column",
-                children=col2["children"],
-            ),
-            html.Div(
-                id=col3["id"],
-                style={"height": "100%"},
-                className="four columns",
-                children=col3["children"],
-            ),
-            html.Div(
-                id=col4["id"],
-                style={},
-                className="one column",
-                children=col4["children"],
-            ),
-            html.Div(
-                id=col5["id"],
-                style={"height": "100%", "margin-top": "5rem"},
-                className="three columns",
-                children=col5["children"],
-            ),
-            html.Div(
-                id=col6["id"],
-                style={"display": "flex", "justifyContent": "center"},
-                className="one column",
-                children=col6["children"],
-            ),
-        ],
-    )
 
 
 def build_chart_panel():
@@ -635,258 +298,115 @@ def build_chart_panel():
         ],
     )
 
+t_sentiment='negative'
+t_text="@Compensar_info buenos días. Tengo inconveniente con la afiliación de un empleado y no encuentro un canal para solucionar. ¿Por favor me podría colaborar?"
+t_date='04:59:57 - Jul 18, 2020'
+s_color="rgb(187, 37, 37)"
 
-def generate_graph(interval, specs_dict, col):
-    stats = state_dict[col]
-    col_data = stats["data"]
-    mean = stats["mean"]
-    ucl = specs_dict[col]["ucl"]
-    lcl = specs_dict[col]["lcl"]
-    usl = specs_dict[col]["usl"]
-    lsl = specs_dict[col]["lsl"]
+def build_tweet_card(t_sentiment, t_text,t_date):
+  
+    return html.Div(
+                    className="tweet-card",
+                    style={ "height":"22rem",
+                          "margin-bottom":"0.825rem",
+                          "box-shadow":"0 4px 6px 0 hsla(0, 0%, 0%, 0.18)",
+                          "overflow":"hidden",
+                          "padding":"20px 16px 16px 16px",
+                          "position":"relative",
+                          "display":"flex",
+                          "flex-direction":"column",
+                          "min-width":"0",
+                          "background-color":"#fff",
+                          "border":"1px solid rgba(0,0,0,.125)",
+                          "border-radius":".25rem",
+                          },
+                    children=[
+                        html.Div(
+                            html.P(
+                                t_date,
+                                style={ "position":"absolute",
+                                        "top": "4px",
+                                        "font-size": "14px",
+                                        "font-size": "1vw",
+                                        "color": "hsl(209, 23%, 60%)",
+                                        "margin-bottom": "0",
+                                      },
+                            ),
+                            style={"width": "100%",
+                                "position": "absolute",
+                                "top": "16px",
+                                "right": "64px",
+                                "left": "16px",
+                                  },
+                        ),
+                        html.P(
+                            t_text,
+                            style={"font-size": "14px",
+                                   "font-size": "1vw",
+                                "color": "hsl(209, 28%, 39%)",
+                                "padding-top": "25px",
+                                  },  
+                        ),
+                        html.Div(
+                            children=[
+                                #insert retweets
+                                #html.Img(id="rt", 
+                                #         src=app.get_asset_url("retweet.png"),
+                                #         style={
+                                #             "position": "absolute",
+                                #             "margin-left":".8em",
+                                #             "bottom":"5px",
+                                #             },
+                                #        ),
+                                #html.P("4"),
+                                html.P(
+                                    t_sentiment,
+                                    style={
+                                        "margin-right":".8em",
+                                        "position": "absolute",
+                                        "bottom":"5px",
+                                        "right": "16px",
+                                        "z-index": "1000",
+                                        "background-color": s_color,
+                                        "color": "#fff",
+                                        "display": "inline-block",
+                                        "padding": ".25em .4em",
+                                        "font-weight": "700",
+                                        "line-height": "1",
+                                        "text-align": "center",
+                                        "white-space": "nowrap",
+                                        "vertical-align": "baseline",
+                                        "border-radius": ".30rem",
+                                        "transition": "color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out",
+                                          },
+                                ),
+                            ],
+                            style={"content": "" "",
+                                "display": "block",
+                                "background-color": "#FFF",
+                                "height": "25px",
+                                "width": "100%",
+                                "position": "absolute",
+                                "bottom": "0",
+                                  },
+                        ),
+                    ],
+                    
+                )
+    
+        
 
-    x_array = state_dict["Batch"]["data"].tolist()
-    y_array = col_data.tolist()
-
-    total_count = 0
-
-    if interval > max_length:
-        total_count = max_length - 1
-    elif interval > 0:
-        total_count = interval
-
-    ooc_trace = {
-        "x": [],
-        "y": [],
-        "name": "Out of Control",
-        "mode": "markers",
-        "marker": dict(color="rgba(210, 77, 87, 0.7)", symbol="square", size=11),
-    }
-
-    for index, data in enumerate(y_array[:total_count]):
-        if data >= ucl or data <= lcl:
-            ooc_trace["x"].append(index + 1)
-            ooc_trace["y"].append(data)
-
-    histo_trace = {
-        "x": x_array[:total_count],
-        "y": y_array[:total_count],
-        "type": "histogram",
-        "orientation": "h",
-        "name": "Distribution",
-        "xaxis": "x2",
-        "yaxis": "y2",
-        "marker": {"color": "#f4d44d"},
-    }
-
-    fig = {
-        "data": [
-            {
-                "x": x_array[:total_count],
-                "y": y_array[:total_count],
-                "mode": "lines+markers",
-                "name": col,
-                "line": {"color": "#f4d44d"},
-            },
-            ooc_trace,
-            histo_trace,
-        ]
-    }
-
-    len_figure = len(fig["data"][0]["x"])
-
-    fig["layout"] = dict(
-        margin=dict(t=40),
-        hovermode="closest",
-        uirevision=col,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        legend={"font": {"color": "darkgray"}, "orientation": "h", "x": 0, "y": 1.1},
-        font={"color": "darkgray"},
-        showlegend=True,
-        xaxis={
-            "zeroline": False,
-            "showgrid": False,
-            "title": "Batch Number",
-            "showline": False,
-            "domain": [0, 0.8],
-            "titlefont": {"color": "darkgray"},
-        },
-        yaxis={
-            "title": col,
-            "showgrid": False,
-            "showline": False,
-            "zeroline": False,
-            "autorange": True,
-            "titlefont": {"color": "darkgray"},
-        },
-        annotations=[
-            {
-                "x": 0.75,
-                "y": lcl,
-                "xref": "paper",
-                "yref": "y",
-                "text": "LCL:" + str(round(lcl, 3)),
-                "showarrow": False,
-                "font": {"color": "white"},
-            },
-            {
-                "x": 0.75,
-                "y": ucl,
-                "xref": "paper",
-                "yref": "y",
-                "text": "UCL: " + str(round(ucl, 3)),
-                "showarrow": False,
-                "font": {"color": "white"},
-            },
-            {
-                "x": 0.75,
-                "y": usl,
-                "xref": "paper",
-                "yref": "y",
-                "text": "USL: " + str(round(usl, 3)),
-                "showarrow": False,
-                "font": {"color": "white"},
-            },
-            {
-                "x": 0.75,
-                "y": lsl,
-                "xref": "paper",
-                "yref": "y",
-                "text": "LSL: " + str(round(lsl, 3)),
-                "showarrow": False,
-                "font": {"color": "white"},
-            },
-            {
-                "x": 0.75,
-                "y": mean,
-                "xref": "paper",
-                "yref": "y",
-                "text": "Targeted mean: " + str(round(mean, 3)),
-                "showarrow": False,
-                "font": {"color": "white"},
-            },
+def build_relevant_tweets():
+    return html.Div(
+        id="relevant-tweets-container",
+        className="content-tile",
+        children=[
+            generate_section_banner("Relevant tweets"),
+            build_tweet_card(t_sentiment, t_text,t_date),
+            build_tweet_card(t_sentiment, t_text,t_date),
+            build_tweet_card(t_sentiment, t_text,t_date),
         ],
-        shapes=[
-            {
-                "type": "line",
-                "xref": "x",
-                "yref": "y",
-                "x0": 1,
-                "y0": usl,
-                "x1": len_figure + 1,
-                "y1": usl,
-                "line": {"color": "#91dfd2", "width": 1, "dash": "dot"},
-            },
-            {
-                "type": "line",
-                "xref": "x",
-                "yref": "y",
-                "x0": 1,
-                "y0": lsl,
-                "x1": len_figure + 1,
-                "y1": lsl,
-                "line": {"color": "#91dfd2", "width": 1, "dash": "dot"},
-            },
-            {
-                "type": "line",
-                "xref": "x",
-                "yref": "y",
-                "x0": 1,
-                "y0": ucl,
-                "x1": len_figure + 1,
-                "y1": ucl,
-                "line": {"color": "rgb(255,127,80)", "width": 1, "dash": "dot"},
-            },
-            {
-                "type": "line",
-                "xref": "x",
-                "yref": "y",
-                "x0": 1,
-                "y0": mean,
-                "x1": len_figure + 1,
-                "y1": mean,
-                "line": {"color": "rgb(255,127,80)", "width": 2},
-            },
-            {
-                "type": "line",
-                "xref": "x",
-                "yref": "y",
-                "x0": 1,
-                "y0": lcl,
-                "x1": len_figure + 1,
-                "y1": lcl,
-                "line": {"color": "rgb(255,127,80)", "width": 1, "dash": "dot"},
-            },
-        ],
-        xaxis2={
-            "title": "Count",
-            "domain": [0.8, 1],  # 70 to 100 % of width
-            "titlefont": {"color": "darkgray"},
-            "showgrid": False,
-        },
-        yaxis2={
-            "anchor": "free",
-            "overlaying": "y",
-            "side": "right",
-            "showticklabels": False,
-            "titlefont": {"color": "darkgray"},
-        },
     )
-
-    return fig
-
-
-def update_sparkline(interval, param):
-    x_array = state_dict["Batch"]["data"].tolist()
-    y_array = state_dict[param]["data"].tolist()
-
-    if interval == 0:
-        x_new = y_new = None
-
-    else:
-        if interval >= max_length:
-            total_count = max_length
-        else:
-            total_count = interval
-        x_new = x_array[:total_count][-1]
-        y_new = y_array[:total_count][-1]
-
-    return dict(x=[[x_new]], y=[[y_new]]), [0]
-
-
-def update_count(interval, col, data):
-    if interval == 0:
-        return "0", "0.00%", 0.00001, "#92e0d3"
-
-    if interval > 0:
-
-        if interval >= max_length:
-            total_count = max_length - 1
-        else:
-            total_count = interval - 1
-
-        ooc_percentage_f = data[col]["ooc"][total_count] * 100
-        ooc_percentage_str = "%.2f" % ooc_percentage_f + "%"
-
-        # Set maximum ooc to 15 for better grad bar display
-        if ooc_percentage_f > 15:
-            ooc_percentage_f = 15
-
-        if ooc_percentage_f == 0.0:
-            ooc_grad_val = 0.00001
-        else:
-            ooc_grad_val = float(ooc_percentage_f)
-
-        # Set indicator theme according to threshold 5%
-        if 0 <= ooc_grad_val <= 5:
-            color = "#92e0d3"
-        elif 5 < ooc_grad_val < 7:
-            color = "#f4d44d"
-        else:
-            color = "#FF0000"
-
-    return str(total_count + 1), ooc_percentage_str, ooc_grad_val, color
 
 
 app.layout = html.Div(
@@ -908,10 +428,12 @@ app.layout = html.Div(
             ],
         ),
         dcc.Store(id="value-setter-store", data=init_value_setter_store()),
-        dcc.Store(id="n-interval-stage", data=50),
-        generate_modal(),
+        dcc.Store(id="n-interval-stage", data=50),   
     ],
 )
+
+
+    
 
 
 @app.callback(
@@ -941,16 +463,19 @@ def render_tab_content(tab_switch, stopped_interval):
                             "margin-left": "0.8rem",
                             "flex": "1 1",
                             "padding": "2rem",
+                            #"background-color": "transparent",
                             "max-width": "25%",
                     },
                     children=[
-                        #TweetList
+                        build_relevant_tweets(),
                     ],
+                        
                 ),
             ],
         ),
         stopped_interval,
     )
+
 
 
 # Update interval
@@ -998,155 +523,6 @@ def update_click_output(button_click):
     return {"display": "none"}
 
 
-# ======= update progress gauge =========
-@app.callback(
-    output=Output("progress-gauge", "value"),
-    inputs=[Input("interval-component", "n_intervals")],
-)
-def update_gauge(interval):
-    if interval < max_length:
-        total_count = interval
-    else:
-        total_count = max_length
-
-    return int(total_count)
-
-
-# ===== Callbacks to update values based on store data and dropdown selection =====
-@app.callback(
-    output=[
-        Output("value-setter-panel", "children"),
-        Output("ud_usl_input", "value"),
-        Output("ud_lsl_input", "value"),
-        Output("ud_ucl_input", "value"),
-        Output("ud_lcl_input", "value"),
-    ],
-    inputs=[Input("metric-select-dropdown", "value")],
-    state=[State("value-setter-store", "data")],
-)
-def build_value_setter_panel(dd_select, state_value):
-    return (
-        [
-            build_value_setter_line(
-                "value-setter-panel-header",
-                "Specs",
-                "Historical Value",
-                "Set new value",
-            ),
-            build_value_setter_line(
-                "value-setter-panel-usl",
-                "Upper Specification limit",
-                state_dict[dd_select]["usl"],
-                ud_usl_input,
-            ),
-            build_value_setter_line(
-                "value-setter-panel-lsl",
-                "Lower Specification limit",
-                state_dict[dd_select]["lsl"],
-                ud_lsl_input,
-            ),
-            build_value_setter_line(
-                "value-setter-panel-ucl",
-                "Upper Control limit",
-                state_dict[dd_select]["ucl"],
-                ud_ucl_input,
-            ),
-            build_value_setter_line(
-                "value-setter-panel-lcl",
-                "Lower Control limit",
-                state_dict[dd_select]["lcl"],
-                ud_lcl_input,
-            ),
-        ],
-        state_value[dd_select]["usl"],
-        state_value[dd_select]["lsl"],
-        state_value[dd_select]["ucl"],
-        state_value[dd_select]["lcl"],
-    )
-
-
-# ====== Callbacks to update stored data via click =====
-@app.callback(
-    output=Output("value-setter-store", "data"),
-    inputs=[Input("value-setter-set-btn", "n_clicks")],
-    state=[
-        State("metric-select-dropdown", "value"),
-        State("value-setter-store", "data"),
-        State("ud_usl_input", "value"),
-        State("ud_lsl_input", "value"),
-        State("ud_ucl_input", "value"),
-        State("ud_lcl_input", "value"),
-    ],
-)
-def set_value_setter_store(set_btn, param, data, usl, lsl, ucl, lcl):
-    if set_btn is None:
-        return data
-    else:
-        data[param]["usl"] = usl
-        data[param]["lsl"] = lsl
-        data[param]["ucl"] = ucl
-        data[param]["lcl"] = lcl
-
-        # Recalculate ooc in case of param updates
-        data[param]["ooc"] = populate_ooc(df[param], ucl, lcl)
-        return data
-
-
-@app.callback(
-    output=Output("value-setter-view-output", "children"),
-    inputs=[
-        Input("value-setter-view-btn", "n_clicks"),
-        Input("metric-select-dropdown", "value"),
-        Input("value-setter-store", "data"),
-    ],
-)
-def show_current_specs(n_clicks, dd_select, store_data):
-    if n_clicks > 0:
-        curr_col_data = store_data[dd_select]
-        new_df_dict = {
-            "Specs": [
-                "Upper Specification Limit",
-                "Lower Specification Limit",
-                "Upper Control Limit",
-                "Lower Control Limit",
-            ],
-            "Current Setup": [
-                curr_col_data["usl"],
-                curr_col_data["lsl"],
-                curr_col_data["ucl"],
-                curr_col_data["lcl"],
-            ],
-        }
-        new_df = pd.DataFrame.from_dict(new_df_dict)
-        return dash_table.DataTable(
-            style_header={"fontWeight": "bold", "color": "inherit"},
-            style_as_list_view=True,
-            fill_width=True,
-            style_cell_conditional=[
-                {"if": {"column_id": "Specs"}, "textAlign": "left"}
-            ],
-            style_cell={
-                "backgroundColor": "#1e2130",
-                "fontFamily": "Open Sans",
-                "padding": "0 2rem",
-                "color": "darkgray",
-                "border": "none",
-            },
-            css=[
-                {"selector": "tr:hover td", "rule": "color: #91dfd2 !important;"},
-                {"selector": "td", "rule": "border: none !important;"},
-                {
-                    "selector": ".dash-cell.focused",
-                    "rule": "background-color: #1e2130 !important;",
-                },
-                {"selector": "table", "rule": "--accent: #1e2130;"},
-                {"selector": "tr", "rule": "background-color: transparent"},
-            ],
-            data=new_df.to_dict("rows"),
-            columns=[{"id": c, "name": c} for c in ["Specs", "Current Setup"]],
-        )
-
-
 # decorator for list of output
 def create_callback(param):
     def callback(interval, stored_data):
@@ -1174,45 +550,6 @@ for param in params[1:]:
     )(update_param_row_function)
 
 
-#  ======= button to choose/update figure based on click ============
-@app.callback(
-    output=Output("control-chart-live", "figure"),
-    inputs=[
-        Input("interval-component", "n_intervals"),
-        Input(params[1] + suffix_button_id, "n_clicks"),
-        Input(params[2] + suffix_button_id, "n_clicks"),
-        Input(params[3] + suffix_button_id, "n_clicks"),
-        Input(params[4] + suffix_button_id, "n_clicks"),
-        Input(params[5] + suffix_button_id, "n_clicks"),
-        Input(params[6] + suffix_button_id, "n_clicks"),
-        Input(params[7] + suffix_button_id, "n_clicks"),
-    ],
-    state=[State("value-setter-store", "data"), State("control-chart-live", "figure")],
-)
-def update_control_chart(interval, n1, n2, n3, n4, n5, n6, n7, data, cur_fig):
-    # Find which one has been triggered
-    ctx = dash.callback_context
-
-    if not ctx.triggered:
-        return generate_graph(interval, data, params[1])
-
-    if ctx.triggered:
-        # Get most recently triggered id and prop_type
-        splitted = ctx.triggered[0]["prop_id"].split(".")
-        prop_id = splitted[0]
-        prop_type = splitted[1]
-
-        if prop_type == "n_clicks":
-            curr_id = cur_fig["data"][0]["name"]
-            prop_id = prop_id[:-7]
-            if curr_id == prop_id:
-                return generate_graph(interval, data, curr_id)
-            else:
-                return generate_graph(interval, data, prop_id)
-
-        if prop_type == "n_intervals" and cur_fig is not None:
-            curr_id = cur_fig["data"][0]["name"]
-            return generate_graph(interval, data, curr_id)
 
 
 # Update piechart
@@ -1237,36 +574,7 @@ def update_piechart(interval, stored_data):
     else:
         total_count = interval - 1
 
-    values = []
-    colors = []
-    for param in params[1:]:
-        ooc_param = (stored_data[param]["ooc"][total_count] * 100) + 1
-        values.append(ooc_param)
-        if ooc_param > 6:
-            colors.append("#f45060")
-        else:
-            colors.append("#91dfd2")
-
     new_figure = {
-        "data": [
-            {
-                "labels": params[1:],
-                "values": values,
-                "type": "pie",
-                "marker": {"colors": colors, "line": dict(color="#323232", width=0.5)},
-                "hoverinfo": "label",
-                "textinfo": "label",
-            }
-        ],
-        "layout": {
-            "margin": dict(t=20, b=50),
-            "uirevision": True,
-            "font": {"color": "#323232"},
-            "showlegend": False,
-            "paper_bgcolor": "rgba(0,0,0,0)",
-            "plot_bgcolor": "rgba(0,0,0,0)",
-            "autosize": True,
-        },
     }
     return new_figure
 
