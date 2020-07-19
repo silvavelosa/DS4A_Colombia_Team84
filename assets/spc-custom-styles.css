@@ -11,10 +11,10 @@
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
 :root {
-  --main-bg-color: #afd9e6;
-  --main-tile-color: #3a8ea8;
-  --main-tile-color: #f5fcff;
-  --tabs-color: #dff4fb;
+  --main-bg-color: #f2f2f2;
+  --main-tile-color: transparent;
+  --main-tile-color: transparent;
+  --tabs-color: #324d67ad;
 }
 
 
@@ -25,7 +25,7 @@
 
 body {
   background-color: var(--main-bg-color);
-  font-family: "Open Sans", sans-serif;
+  font-family: "Lato", sans-serif;
   width: 100%;
   height: 100vh;
   max-width: 100% !important;
@@ -152,6 +152,7 @@ body {
 .custom-tabs {
   background-color: var(--main-bg-color);
   text-transform: uppercase;
+  color:#fff;
   font-weight: 600;
   font-size: 14px;
   height: fit-content;
@@ -181,29 +182,31 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
 #Specs-tab.custom-tab {
   background-color: var(--tabs-color);
   border-radius: 2rem;
-  margin: 3px;
+  margin: 5px;
 }
 
 #Control-chart-tab.custom-tab {
   background-color: var(--tabs-color);
   border-radius: 2rem;
-  margin: 3px;
+  margin: 5px;
 }
 
 .section-banner {
-  color: #101010;
-  font-size: 1.5rem;
-  text-align: left;
-  padding: 1rem 2rem;
-  border-bottom: 1px solid #4b5460;
-  width: 100%;
+    font-size: 18px;
+    color: #2f2935;
+    font-weight: 500;
+    text-align: left!important;
+    position:relative;
+    display: block;
+    margin-bottom: 2rem;
+    margin-top: 1.5rem;
 }
 
 /* Main Dashboard Tab
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
 #top-section-container {
-  height: 40rem;
+  height: 35rem;
   flex-direction: row;
   display: flex;
   max-width: 100%;
@@ -230,20 +233,17 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
 
 .metric-row:hover {
   background-color: var(--tabs-color);
-}
+}def plot_wordcloud(data):
+    wc = WordCloud(max_font_size=100, max_words=100, background_color="white",
+                   scale = 10,width=300, height=300,
+                   colormap="ocean").generate(data)
+    return wc.to_image()
 
-/*Dash Daq Graduatebar */
-#Diameter_OOC_graph > div > div,
-#Etch1_OOC_graph > div > div,
-#Film-Thickness_OOC_graph > div > div,
-#Metric4_OOC_graph > div > div,
-#Etch2_OOC_graph > div > div,
-#Line-Width_OOC_graph > div > div,
-#Overlay_OOC_graph > div > div,
-#Volume_OOC_graph > div > div {
-  width: 100%;
-  background-color: #2f2935 !important;
-}
+@app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
+def make_image(b):
+    img = BytesIO()
+    plot_wordcloud(data=dfm).save(img, format='PNG')
+    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
 
 #quick-stats.row {
   display: flex;
@@ -265,124 +265,90 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
 }
 
 #ooc-piechart-outer {
-  height: 100%;
-  margin: 0;
+  height: 80%;
+  margin: 1rem;
   margin-left: 0.8rem;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
 #piechart2 .main-svg{
   background: #00000000 !important;
 }
 
-#card-1, #card-2, #utility-card {
+#card-1, #card-2,#card-0 {
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
   align-items: center;
   margin: 0;
   padding: 0;
-  width: 100%;
+  width: 75%;
+  display: block;
+  margin-bottom:0.825rem;
+  box-shadow:0 4px 6px 0 hsla(0; 0%; 0%; 0.18);
+  background-color:#fff;
+  border:1px solid rgba(0;0;0;.125);
+  border-radius:15px;
 }
 
-#card-1 {
-  margin-bottom: 3rem;
-}
-
-#utility-card {
-  height: 4rem !important;
-  margin-top: 2rem;
-}
 
 #stop-button > div > button:hover {
   color: #91dfd2 !important;
 }
 
-/* Tab1 content
-–––––––––––––––––––––––––––––––––––––––––––––––––– */
+/* right pannel tweets
+----------------------------------------------*/
 
-#set-specs-intro-container {
-  font-weight: bold;
-  margin: 8rem 5rem 1rem;
-  font-size: 1.6rem;
+#tweet-card {
+    height:18rem;
+    margin-bottom:0.825rem;
+    box-shadow:0 4px 6px 0 hsla(0; 0%; 0%; 0.18);
+    overflow:hidden;
+    padding:12px 12px 12px 12px;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    background-color:#fff;
+    border:1px solid rgba(0;0;0;.125);
+    border-radius:10px;
 }
 
-
-#metric-select-title {
-  color: darkgray;
+#tweet-head {
+    width: 100%;
+    position: absolute;
+    top: 16px;
+    right: 64px;
+    left: 16px;
 }
 
-#button-div {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
+#tweet-head P {
+    position:absolute;
+    top: 4px;
+    font-size: 14px;
+    font-size: 1vw;
+    color: #173C5E;
+    margin-bottom: 0;
+}    
+
+#tweet-sentiment {
+width: 100%;
+position: absolute;
+bottom: 0;
 }
 
-#value-setter-view-btn {
-  margin-left: 20px;
+#tweet-sentiment P {
+    margin-right:.8em;
+    position: absolute;
+    bottom:5px;
+    right: 16px;
+    color: #fff;
+    padding: .25em .4em;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    border-radius: .30rem;
 }
-
-#value-setter-panel {
-  line-height: 2;
-}
-
-#value-setter-panel-header {
-  font-weight: bold;
-  color: darkgray;
-  line-height: 1;
-  padding: 2rem 0;
-  border-bottom: 1px solid #4b5460;
-}
-
-#value-setter-panel-header > div {
-  text-align: right;
-}
-
-#value-setter-view-btn, #value-setter-set-btn {
-  border: 1px solid #4B5460;
-  color: darkgray;
-}
-
-#value-setter-set-btn:hover, #value-setter-view-btn:hover {
-  color: #91dfd2;
-  border-color: white;
-}
-
-#value-setter-panel-usl, #value-setter-panel-lsl, #value-setter-panel-ucl, #value-setter-panel-lcl {
-  padding: 1rem 0;
-}
-
-.output-datatable {
-  margin: 2rem 0rem 2rem 2rem;
-  line-height: 3;
-  align-self: flex-end;
-  width: 80%;
-}
-
-/*Dropdown*/
-.setting-input {
-  width: 100% !important;
-  height: 100%;
-}
-
-.react-numeric-input, .react-numeric-input input {
-  width: 100% !important;
-}
-
-.react-numeric-input input {
-  background-color: #242633 !important;
-  border-color: darkgray !important;
-  color: white !important;
-}
-
-.react-numeric-input b:nth-child(2) i {
-  border-color: transparent transparent white !important;
-}
-
-.react-numeric-input b:nth-child(3) i {
-  border-color: white transparent transparent !important;
-}
-
 
 /* Dropdown
 ----------------------------------------------*/
@@ -453,25 +419,6 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
   max-width: 100%;
 }
 
-#settings-menu {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: space-evenly;
-  margin: 4rem 5rem 1rem;
-}
-
-#metric-select-menu {
-  flex: 1 1 0;
-}
-
-#value-setter-menu {
-  flex: 1 1 30%;
-  margin-left: 5rem;
-  display: flex;
-  flex-direction: column;
-}
-
 #status-container {
   width: 100%;
   max-width: 100%;
@@ -499,14 +446,10 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  margin-right: 0.8rem;
+  margin-right: 0.5rem;
   flex: 1 1;
   padding: 2rem;
-  max-width: 20%;
-}
-
-#operator-led {
-  width: 200px;
+  max-width: 15%;
 }
 
 #operator-led > div {
@@ -566,12 +509,7 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
   background-color: #1d202d !important;
 }
 
-#card-1 P, #card-2 P {
-  margin: 2rem;
-  color: inherit;
-  font-weight: bold;
-  align-self: flex-start;
-}
+
 
 #card-2 .scale, #card-2 .needle, #card-2 .needle-knob {
   display: none !important;
@@ -592,9 +530,6 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
   color: white !important;
 }
 
-#metric-div {
-  padding: 1rem 2rem 1rem 1rem;
-}
 
 #metric-rows {
   overflow-y: scroll;
