@@ -30,30 +30,48 @@ app.title = 'Twitter sentyment analysis - Dashboard'
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 
 
+#======================================================================================================================================
+#===============================      DATA FRAMES   ===================================================================================
+#======================================================================================================================================
 
 
-df_tweets=jb.load("tweets_sentiment_parse.joblib")
-sentiment=df_tweets.groupby('sentiment').count()['watson_sentiment'].reset_index()
-sentiment=sentiment[sentiment.sentiment.isin (['negative','neutral','positive'])]
-date=df_tweets.groupby([df_tweets.date.dt.to_period("M"),'sentiment']).count()\
-    ['watson_sentiment'].reset_index()
 
-date['date']=date.date.map(str)
-df2=date.pivot(index='date', columns='sentiment', values='watson_sentiment')
-dfm= ''.join(df_tweets.text)
 
-df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "spc_data.csv")))
+df = jb.load(os.path.join(APP_PATH, os.path.join("data", "base_historica_calificada.joblib")))
+df['popular']=df['replies']+df['retweets']+df['favorites']
+df['month']=df.date.dt.to_period("M")
+df['month']=df.month.map(str)
+
 
 params = list(df)
 max_length = len(df)
-
-
 
 
 t_sentiment='negative'
 t_text="@Compensar_info buenos días. Tengo inconveniente con la afiliación de un empleado y no encuentro un canal para solucionar. ¿Por favor me podría colaborar?"
 t_date='04:59:57 - Jul 18, 2020'
 s_color="rgb(187, 37, 37)"
+
+
+def sentiment_summary(df_tweets):
+    di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
+    sentiment=df_tweets.groupby('sentiment').count()['date'].reset_index()
+    sentiment.columns=['sentiment','count']
+    sentiment=sentiment.replace({'sentiment': di})
+    sentiment=sentiment.set_index('sentiment')
+    return sentiment
+
+
+def month_summary(df_tweets):
+    month=df_tweets.groupby(['month','sentiment']).count()['date'].reset_index()
+    month=month.pivot(index='month', columns='sentiment', values='date')
+    return month
+
+def pop_tweets_summary (df_tweets):
+    di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
+    pop_tweets=df.sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
+    pop_tweets=pop_tweets.replace({'sentiment': di})
+    return pop_tweets
 
 
 def init_df():
@@ -68,6 +86,9 @@ def init_value_setter_store():
     # Initialize store data
     state_dict = init_df()
     return state_dict
+
+
+
 
 
 #======================================================================================================================================
@@ -176,7 +197,7 @@ def build_quick_stats_panel():
             html.Div(
                 id="card-1",
                 children=[
-                    html.P(str(len(df_tweets)),
+                    html.P(str(len(df)),
                           style={"text-align": "center",
                                 "font-size": "30px",
                                 "font-weigh": "600",
@@ -238,14 +259,10 @@ def build_top_panel():
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Most Frequent words"),
-                    html.Div(
-                        children=[
-                            html.Img(id="image_wc",style={
-                            "width": "95%",
-                            "height":"95%"
+                    html.Img(id="image_wc",style={
+                            "max-width": "95%",
+                            "max-height":"90%"
                             }),
-                        ],
-                    ),
                 ],
             ),
             
@@ -254,7 +271,7 @@ def build_top_panel():
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Sentiment breakdown"),
-                    dcc.Graph(figure= generate_bar()),
+                    dcc.Graph(figure= generate_bar(df)),
                ],
                 
             ),
@@ -271,32 +288,21 @@ def build_chart_panel():
         className="content-tile twelve columns",
         children=[
             generate_section_banner("Sentiment over time"),
-            dcc.Graph(figure= dict({
-                    "data": [{"mode": "lines+markers",
-                            "x": df2.index,
-                            "y": df2.positive,
-                            "name":'positive',
-                            "line": {"color": "rgb(20, 145, 153)"}
-                            },
-                            {"mode": "lines+markers",
-                            "x": df2.index,
-                            "y": df2.negative,
-                            "name":'negative',
-                            "line": {"color": "rgb(187, 37, 37)"}
-                            },
-                            {"mode": "lines+markers",
-                            "x": df2.index,
-                            "y": df2.neutral,
-                            "name":'neutral',
-                            "line": {"color": "#f4d44d"}
-                            }]
-                })
+            dcc.Graph(figure= generate_line(df)
+                
             ),
         ],
     )
 
 
-def build_tweet_card(t_sentiment, t_text,t_date):
+def build_tweet_card(i):
+    pop_tweets=pop_tweets_summary(df)
+    colors={'Negative':'rgb(187, 37, 37)','Positive':'rgb(20, 145, 153)','Neutral':'#f4d44d'}
+    t_sentiment=pop_tweets.loc[i]['sentiment']
+    t_text=pop_tweets.loc[i]['text']
+    t_date=pop_tweets.loc[i]['date']
+    s_color=colors[t_sentiment]
+    
     return html.Div(
                     id="tweet-card",
                     children=[
@@ -305,10 +311,10 @@ def build_tweet_card(t_sentiment, t_text,t_date):
                             children=[html.P(t_date)],
                         ),
                         html.P(t_text,
-                            style={"font-size": "14px",
-                                   "font-size": "1vw",
+                            style={"font-size": "0.88vw",
                                    "color": "hsl(209, 28%, 39%)",
                                    "padding-top": "25px",
+                                   "margin-top": "0.5rem",
                                   },  
                         ),
                         html.Div(
@@ -330,10 +336,10 @@ def build_relevant_tweets():
         className="content-tile",
         children=[
             generate_section_banner("Relevant tweets"),
-            build_tweet_card(t_sentiment, t_text,t_date),
-            build_tweet_card(t_sentiment, t_text,t_date),
-            build_tweet_card(t_sentiment, t_text,t_date),
-            build_tweet_card(t_sentiment, t_text,t_date),
+            build_tweet_card(0),
+            build_tweet_card(1),
+            build_tweet_card(2),
+            build_tweet_card(3),
         ],
         style={"margin-left": "1.8rem",},
     )
@@ -408,44 +414,59 @@ def render_tab_content(tab_switch, stopped_interval):
 
 def plot_wordcloud(data): #crea wordcloud
     wc = WordCloud(max_font_size=100, max_words=100, background_color="white",
-                   scale = 10,width=300, height=300,
+                   scale = 10,width=320, height=300,
                    colormap="ocean").generate(data)
     return wc.to_image()
 
 
 @app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
 def make_image(b): #genera la imagen del wordcloud
+    df_wc= ''.join(df.text)
     img = BytesIO()
-    plot_wordcloud(data=dfm).save(img, format='PNG')
+    plot_wordcloud(data=df_wc).save(img, format='PNG')
     return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
 
 
-def generate_bar(): # genera grafica de barras de sentimiento
-    fig = go.Figure(go.Bar(x=["positive"], y=[0.4], name='Positive', marker_color="rgb(20, 145, 153)"))
-    fig.add_trace(go.Bar(x=["negative"], y=[0.2], name='Negative', marker_color="rgb(187, 37, 37)"))
-    fig.add_trace(go.Bar(x=["neutral"], y=[0.4], name='Neutral', marker_color="#f4d44d"))
+def generate_bar(df_tweets): # genera grafica de barras de sentimiento
+    df_bar=sentiment_summary(df_tweets)
+    total=df_bar['count'].sum()
+    y_positive=round(df_bar.loc['Positive'].values[0]/total, 2)
+    y_negative=round(df_bar.loc['Negative'].values[0]/total, 2)
+    y_neutral=round(df_bar.loc['Neutral'].values[0]/total, 2)
+    
+    fig = go.Figure(go.Bar(x=["positive"], y=[y_positive],text=str(y_positive)+' %',
+                           textposition='auto', marker_color="rgb(20, 145, 153)"))
+    fig.add_trace(go.Bar(x=["negative"], y=[y_negative],text=str(y_negative)+' %',
+                         textposition='auto', marker_color="rgb(187, 37, 37)"))
+    fig.add_trace(go.Bar(x=["neutral"], y=[y_neutral],text=str(y_neutral)+' %',
+                         textposition='auto',marker_color="#f4d44d"))
+    
     fig.update_layout(barmode='stack', xaxis={'categoryorder':'total descending'}, 
-                      height=260,margin=dict(l=10,r=10,b=10,t=10,pad=4),showlegend=False,)
+                      height=260,margin=dict(l=10,r=15,b=10,t=15,pad=4),showlegend=False,
+                      plot_bgcolor = '#f1f6ff')
     return fig
 
 
-def generate_line(): # genera grafica de tiempo
+def generate_line(df_tweets): # genera grafica de tiempo
+    df_line=month_summary(df_tweets)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df2.index, y=df2.positive,
+    fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Positivo,
                              mode='lines',
                              name='positive',
-                             color="rgb(20, 145, 153)",
+                             line=dict(color="rgb(20, 145, 153)"),
                             ))
-    fig.add_trace(go.Scatter(x=df2.index, y=df2.negative,
+    fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Negativo,
                              mode='lines',
                              name='negative',
-                             color="rgb(187, 37, 37)",
+                             line=dict(color="rgb(187, 37, 37)"),
                             ))
-    fig.add_trace(go.Scatter(x=df2.index, y=df2.neutral,
+    fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Neutro,
                              mode='lines',
                              name='neutral',
-                             color="#f4d44d",
+                             line=dict(color="#f4d44d"),
                             ))
+    
+    fig.update_layout(height=260,margin=dict(l=10,r=15,b=10,t=15,pad=4),showlegend=False,plot_bgcolor = '#f1f6ff')
   
     return fig
 
