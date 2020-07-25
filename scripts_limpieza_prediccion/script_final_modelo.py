@@ -1,3 +1,4 @@
+from datetime import datetime
 from joblib import Parallel, delayed, dump, load
 import pandas as pd
 import GetOldTweets3 as got
@@ -60,13 +61,14 @@ def get_range_dates(begin_date, end_date):
     return (start_date_text, end_date_text)
 
 
-def get_all_tweets(query, date_since, date_until, n_jobs_func=24):
+def get_all_tweets(query, date_since, date_until, name_caja, n_jobs_func=24):
     comienzo_periodo, fin_periodo = get_range_dates(date_since, date_until)
     scraped_tweets = Parallel(n_jobs=n_jobs_func, prefer="threads", verbose=100)(
         delayed(got_tweets)(query, fec_start, fec_end) for fec_start, fec_end in zip(comienzo_periodo, fin_periodo))
     flat_tweets = [item for sublist in scraped_tweets for item in sublist]
     df_tweets_hist = pd.DataFrame(map(convert_tweet_df, flat_tweets))
-    return (df_tweets_hist)
+    df_tweets_hist['name_caja'] = name_caja
+    return df_tweets_hist
 
 
 def clean_tweets(df):
@@ -137,32 +139,51 @@ def clean_tweets(df):
 
 def calif_tweets(df):
     tweets_clean = clean_tweets(df)
-    tweets_clean["sentiment"] = tweets_clean["text_clean"].apply(lambda x: clf.predict(x))
-    tweets_clean["sentiment"] = (tweets_clean["sentiment"] - 0.5) * 2
-    tweets_clean["sentiment"] = pd.cut(tweets_clean["sentiment"], bins=[-2, -0.5, 0.2, 2],
+    tweets_clean["calif_sentiment"] = tweets_clean["text_clean"].apply(lambda x: clf.predict(x))
+    tweets_clean["calif_sentiment"] = (tweets_clean["calif_sentiment"] - 0.5) * 2
+    tweets_clean["sentiment"] = pd.cut(tweets_clean["calif_sentiment"], bins=[-2, -0.5, 0.2, 2],
                                        labels=["Negativo", "Neutro", "Positivo"])
     return tweets_clean
 
-def get_tweets_and_clasific(query, date_since, date_until, n_jobs_func, df_hist):
-    base_new = get_all_tweets(query=query, date_since=date_since,
+
+def get_tweets_and_clasific(query, date_since, date_until, n_jobs_func, df_hist, name_caja):
+    base_new = get_all_tweets(query=query, date_since=date_since, name_caja=name_caja,
                               date_until=date_until, n_jobs_func=n_jobs_func)
     print("tweets obtenidos")
     mask_iden = ~(base_new['id'].isin(df_hist['id']))
     base_to_calif = base_new[mask_iden]
     base_new_calif = calif_tweets(df=base_to_calif)
-    base_retorno = df_hist.append(base_new_calif).reset_index()
+    base_retorno = df_hist.append(base_new_calif)
     return base_retorno
+
+
+def get_tweets_and_clasific_several(consultas, date_since, date_until, n_jobs_func, df_hist):
+    for cuenta, nombre in zip(consultas['cuenta'], consultas['nombre']):
+        q = "".join(['(to:', cuenta, ") (@", cuenta, ")"])
+        print(nombre)
+        df_hist = get_tweets_and_clasific(query=q, date_since=date_since, date_until=date_until,
+                                          n_jobs_func=n_jobs_func, df_hist=df_hist, name_caja=nombre)
+        df_hist = df_hist.reset_index(drop=True)
+    return df_hist
+
 
 
 ###################################################################################
 ###LOAD DATA TWEETS
 with open('./base_historica_calificada.joblib', 'rb') as f:
     tweets_historicos = joblib.load(f)
-#######
+#######LOAD CUENTAS
+with open('./data/consultas_tweets.xlsx', 'rb') as f:
+    consultas = pd.read_excel(f)
+####################################################################################
 
-q = "(to:Compensar_info) (@Compensar_info)"
+hoy = datetime.today().strftime('%Y-%m-%d')
+inicio = datetime.today() - dt.timedelta(3)
+inicio = inicio.strftime('%Y-%m-%d')
 
-get_tweets_and_clasific(query=q, date_since='2020-07-17', date_until='2020-07-18',
-                        n_jobs_func=1, df_hist=tweets_historicos)
+resultado = get_tweets_and_clasific_several(consultas=consultas, date_since=inicio, date_until=hoy,
+                                     n_jobs_func=1, df_hist=tweets_historicos
+                                     )
 
-
+with open('./data/base_historica_calificada.joblib', 'wb') as f:
+    dump(resultado, f)
