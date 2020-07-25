@@ -1,7 +1,5 @@
 import os
 import pathlib
-
-
 import base64
 import dash
 import dash_core_components as dcc
@@ -11,13 +9,15 @@ import dash_table
 import plotly.graph_objs as go
 import dash_daq as daq
 from wordcloud import WordCloud
-
-
 from io import BytesIO
 import pandas as pd
 import joblib as jb
 
-    
+
+#======================================================================================================================================
+#===============================      APP START    ====================================================================================
+#======================================================================================================================================
+
 
 app = dash.Dash(
     __name__,
@@ -30,39 +30,70 @@ app.title = 'Twitter sentyment analysis - Dashboard'
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 
 
-df_tweets=jb.load("tweets_sentiment_parse.joblib")
-sentiment=df_tweets.groupby('sentiment').count()['watson_sentiment'].reset_index()
-sentiment=sentiment[sentiment.sentiment.isin (['negative','neutral','positive'])]
-date=df_tweets.groupby([df_tweets.date.dt.to_period("M"),'sentiment']).count()\
-    ['watson_sentiment'].reset_index()
+#======================================================================================================================================
+#===============================      DATA FRAMES   ===================================================================================
+#======================================================================================================================================
 
-date['date']=date.date.map(str)
-df2=date.pivot(index='date', columns='sentiment', values='watson_sentiment')
-dfm= ''.join(df_tweets.text)
 
-df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "spc_data.csv")))
+
+
+df = jb.load(os.path.join(APP_PATH, os.path.join("data", "base_historica_calificada.joblib")))
+df['popular']=df['replies']+df['retweets']+df['favorites']
+df['month']=df.date.dt.to_period("M")
+df['month']=df.month.map(str)
+
 
 params = list(df)
 max_length = len(df)
 
-suffix_row = "_row"
-suffix_button_id = "_button"
-suffix_sparkline_graph = "_sparkline_graph"
-suffix_count = "_count"
-suffix_ooc_n = "_OOC_number"
-suffix_ooc_g = "_OOC_graph"
-suffix_indicator = "_indicator"
 
-def plot_wordcloud(data):
-    wc = WordCloud(max_font_size=100, max_words=100, background_color="white",\
-                          scale = 10,width=300, height=300).generate(data)
-    return wc.to_image()
+t_sentiment='negative'
+t_text="@Compensar_info buenos días. Tengo inconveniente con la afiliación de un empleado y no encuentro un canal para solucionar. ¿Por favor me podría colaborar?"
+t_date='04:59:57 - Jul 18, 2020'
+s_color="rgb(187, 37, 37)"
 
-@app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
-def make_image(b):
-    img = BytesIO()
-    plot_wordcloud(data=dfm).save(img, format='PNG')
-    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
+
+def sentiment_summary(df_tweets):
+    di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
+    sentiment=df_tweets.groupby('sentiment').count()['date'].reset_index()
+    sentiment.columns=['sentiment','count']
+    sentiment=sentiment.replace({'sentiment': di})
+    sentiment=sentiment.set_index('sentiment')
+    return sentiment
+
+
+def month_summary(df_tweets):
+    month=df_tweets.groupby(['month','sentiment']).count()['date'].reset_index()
+    month=month.pivot(index='month', columns='sentiment', values='date')
+    return month
+
+def pop_tweets_summary (df_tweets):
+    di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
+    pop_tweets=df.sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
+    pop_tweets=pop_tweets.replace({'sentiment': di})
+    return pop_tweets
+
+
+def init_df():
+    ret = {}
+
+    return ret
+
+state_dict = init_df()
+
+
+def init_value_setter_store():
+    # Initialize store data
+    state_dict = init_df()
+    return state_dict
+
+
+
+
+
+#======================================================================================================================================
+#===============================      CONSTRUCCION PAGINA      ========================================================================
+#======================================================================================================================================
 
 
 def build_banner():
@@ -81,7 +112,7 @@ def build_banner():
                 id="banner-text",
                 children=[
                     html.H5('"CAJAS DE COMPENSACIÓN" TWITTER SENTIMENT'),
-                    html.H6("Analysis of user's Tweets from a week in June 2020"),
+                    html.H6("Analysis of user's Tweets"),
                 ],
             ),
             html.Div(
@@ -125,20 +156,6 @@ def build_tabs():
     )
 
 
-def init_df():
-    ret = {}
-
-    return ret
-
-state_dict = init_df()
-
-
-def init_value_setter_store():
-    # Initialize store data
-    state_dict = init_df()
-    return state_dict
-
-
 def build_tab_1():
     return [
         # Manually select metrics
@@ -154,108 +171,107 @@ def build_tab_1():
 def build_quick_stats_panel():
     return html.Div(
         id="quick-stats",
-        className="row content-tile",
         children=[
             generate_section_banner("Tweets Summary"),
             html.Div(
+                id="card-0",
+                children=[
+                    html.P("10%",
+                          style={"text-align": "center",
+                                "font-size": "30px",
+                                "font-weigh": "600",
+                                "color": "rgb(55, 188, 200)",
+                                "margin-bottom":"0",
+                                },
+                          ),
+                    html.P("Sentiment",
+                          style={"text-align": "center",
+                                "font-size": "12px",
+                                "font-weigh": "100",
+                                "color": "#BCCCDC",
+                                "margin-top":"0",
+                                },
+                          ),
+                ],
+            ),
+            html.Div(
                 id="card-1",
                 children=[
-                    html.P("Total Tweet Count"),
-                    daq.LEDDisplay(
-                        id="operator-led",
-                        value=str(len(df_tweets)),
-                        color="#92e0d3",
-                        backgroundColor="#1e2130",
-                        size=40,
-                    ),
+                    html.P(str(len(df)),
+                          style={"text-align": "center",
+                                "font-size": "30px",
+                                "font-weigh": "600",
+                                "color": "rgb(55, 188, 200)",
+                                "margin-bottom":"0",
+                                },
+                          ),
+                    html.P("Interactions",
+                          style={"text-align": "center",
+                                "font-size": "12px",
+                                "font-weigh": "100",
+                                "color": "#BCCCDC",
+                                "margin-top":"0",
+                                },
+                          ),
                 ],
             ),
             html.Div(
                 id="card-2",
                 children=[
-                    html.P("Total User Count"),
-                    daq.LEDDisplay(
-                        id="operator-led",
-                        value="7129",
-                        color="#92e0d3",
-                        backgroundColor="#1e2130",
-                        size=40,
-                    ),
+                    html.P("7500",
+                          style={"text-align": "center",
+                                "font-size": "30px",
+                                "font-weigh": "600",
+                                "color": "rgb(55, 188, 200)",
+                                "margin-bottom":"0",
+                                },
+                          ),
+                    html.P("Users",
+                           style={"text-align": "center",
+                                "font-size": "12px",
+                                "font-weigh": "100",
+                                "color": "#BCCCDC",
+                                "margin-top":"0",
+                                },
+                          ),
                 ],
             ),
-            #html.Div(
-                #id="card-2",
-                #children=[
-                    #html.P("Time to completion"),
-                    #daq.Gauge(
-                        #id="progress-gauge",
-                        #max=max_length * 2,
-                        #min=0,
-                        #showCurrentValue=True,  # default size 200 pixel
-                    #),
-                #],
-            #),
-            #html.Div(
-                #id="utility-card",
-                #children=[daq.StopButton(id="stop-button", size=160, #n_clicks=0)],
-            #),"""
-
         ],
+        style={"display": "block",
+              "padding":"0",},
     )
 
 
 def generate_section_banner(title):
-    return html.Div(className="section-banner", children=title,)
+    return html.P(title,className="section-banner")
+        
+    
 
 
-def build_top_panel(stopped_interval):
+def build_top_panel():
     return html.Div(
         id="top-section-container",
         className="row",
         children=[
-            
             # Word cloud
             html.Div(
                 id="metric-summary-session",
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Most Frequent words"),
-                    html.Div(
-                        id="metric-div",
-                        children=[
-                            html.Img(id="image_wc",style={
-                            "width": "95%",
-                            "height":"95%"
+                    html.Img(id="image_wc",style={
+                            "max-width": "95%",
+                            "max-height":"90%"
                             }),
-                        ],
-                    ),
                 ],
             ),
             
             # Piechart
             html.Div(
-                id="ooc-piechart-outer",
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Sentiment breakdown"),
-                    dcc.Graph(
-                        id='piechart2',
-                        figure= dict({
-                            "data": [{"type": "pie",
-                                    "labels": sentiment['sentiment'],
-                                    "values": sentiment['watson_sentiment'],
-                                     "marker": {'colors': [
-                                                 '#de1738',
-                                                 '#f4d44d',
-                                                 '#05d44d'
-                                                ]},
-                                     }],
-                            "layout": {"margin": dict(l=20, r=20, t=20, b=30),
-                                       "autosize": True,
-                                       "showlegend":False,
-                                     }
-                        })
-                    ),
+                    dcc.Graph(figure= generate_bar(df)),
                ],
                 
             ),
@@ -272,123 +288,42 @@ def build_chart_panel():
         className="content-tile twelve columns",
         children=[
             generate_section_banner("Sentiment over time"),
-            dcc.Graph(
-                id='example-graph_2',
-                figure= dict({
-                    "data": [{"mode": "lines+markers",
-                            "x": df2.index,
-                            "y": df2.positive,
-                            "name":'positive',
-                            "line": {"color": "#05d44d"}
-                            },
-                            {"mode": "lines+markers",
-                            "x": df2.index,
-                            "y": df2.negative,
-                            "name":'negative',
-                            "line": {"color": "#de1738"}
-                            },
-                            {"mode": "lines+markers",
-                            "x": df2.index,
-                            "y": df2.neutral,
-                            "name":'neutral',
-                            "line": {"color": "#f4d44d"}
-                            }]
-                })
+            dcc.Graph(figure= generate_line(df)
+                
             ),
         ],
     )
 
-t_sentiment='negative'
-t_text="@Compensar_info buenos días. Tengo inconveniente con la afiliación de un empleado y no encuentro un canal para solucionar. ¿Por favor me podría colaborar?"
-t_date='04:59:57 - Jul 18, 2020'
-s_color="rgb(187, 37, 37)"
 
-def build_tweet_card(t_sentiment, t_text,t_date):
-  
+def build_tweet_card(i):
+    pop_tweets=pop_tweets_summary(df)
+    colors={'Negative':'rgb(187, 37, 37)','Positive':'rgb(20, 145, 153)','Neutral':'#f4d44d'}
+    t_sentiment=pop_tweets.loc[i]['sentiment']
+    t_text=pop_tweets.loc[i]['text']
+    t_date=pop_tweets.loc[i]['date']
+    s_color=colors[t_sentiment]
+    
     return html.Div(
-                    className="tweet-card",
-                    style={ "height":"22rem",
-                          "margin-bottom":"0.825rem",
-                          "box-shadow":"0 4px 6px 0 hsla(0, 0%, 0%, 0.18)",
-                          "overflow":"hidden",
-                          "padding":"20px 16px 16px 16px",
-                          "position":"relative",
-                          "display":"flex",
-                          "flex-direction":"column",
-                          "min-width":"0",
-                          "background-color":"#fff",
-                          "border":"1px solid rgba(0,0,0,.125)",
-                          "border-radius":".25rem",
-                          },
+                    id="tweet-card",
                     children=[
                         html.Div(
-                            html.P(
-                                t_date,
-                                style={ "position":"absolute",
-                                        "top": "4px",
-                                        "font-size": "14px",
-                                        "font-size": "1vw",
-                                        "color": "hsl(209, 23%, 60%)",
-                                        "margin-bottom": "0",
-                                      },
-                            ),
-                            style={"width": "100%",
-                                "position": "absolute",
-                                "top": "16px",
-                                "right": "64px",
-                                "left": "16px",
-                                  },
+                            id="tweet-head",
+                            children=[html.P(t_date)],
                         ),
-                        html.P(
-                            t_text,
-                            style={"font-size": "14px",
-                                   "font-size": "1vw",
-                                "color": "hsl(209, 28%, 39%)",
-                                "padding-top": "25px",
+                        html.P(t_text,
+                            style={"font-size": "0.88vw",
+                                   "color": "hsl(209, 28%, 39%)",
+                                   "padding-top": "25px",
+                                   "margin-top": "0.5rem",
                                   },  
                         ),
                         html.Div(
+                            id="tweet-sentiment",
                             children=[
-                                #insert retweets
-                                #html.Img(id="rt", 
-                                #         src=app.get_asset_url("retweet.png"),
-                                #         style={
-                                #             "position": "absolute",
-                                #             "margin-left":".8em",
-                                #             "bottom":"5px",
-                                #             },
-                                #        ),
-                                #html.P("4"),
-                                html.P(
-                                    t_sentiment,
-                                    style={
-                                        "margin-right":".8em",
-                                        "position": "absolute",
-                                        "bottom":"5px",
-                                        "right": "16px",
-                                        "z-index": "1000",
-                                        "background-color": s_color,
-                                        "color": "#fff",
-                                        "display": "inline-block",
-                                        "padding": ".25em .4em",
-                                        "font-weight": "700",
-                                        "line-height": "1",
-                                        "text-align": "center",
-                                        "white-space": "nowrap",
-                                        "vertical-align": "baseline",
-                                        "border-radius": ".30rem",
-                                        "transition": "color .15s ease-in-out,background-color .15s ease-in-out,border-color .15s ease-in-out,box-shadow .15s ease-in-out",
-                                          },
+                                html.P(t_sentiment,
+                                    style={"background-color": s_color},
                                 ),
                             ],
-                            style={"content": "" "",
-                                "display": "block",
-                                "background-color": "#FFF",
-                                "height": "25px",
-                                "width": "100%",
-                                "position": "absolute",
-                                "bottom": "0",
-                                  },
                         ),
                     ],
                     
@@ -398,14 +333,15 @@ def build_tweet_card(t_sentiment, t_text,t_date):
 
 def build_relevant_tweets():
     return html.Div(
-        id="relevant-tweets-container",
         className="content-tile",
         children=[
             generate_section_banner("Relevant tweets"),
-            build_tweet_card(t_sentiment, t_text,t_date),
-            build_tweet_card(t_sentiment, t_text,t_date),
-            build_tweet_card(t_sentiment, t_text,t_date),
+            build_tweet_card(0),
+            build_tweet_card(1),
+            build_tweet_card(2),
+            build_tweet_card(3),
         ],
+        style={"margin-left": "1.8rem",},
     )
 
 
@@ -432,15 +368,12 @@ app.layout = html.Div(
     ],
 )
 
-
-    
-
-
 @app.callback(
     [Output("app-content", "children"), Output("interval-component", "n_intervals")],
     [Input("app-tabs", "value")],
     [State("n-interval-stage", "data")],
 )
+
 def render_tab_content(tab_switch, stopped_interval):
     if tab_switch == "tab1":
         return  html.Div(
@@ -454,15 +387,14 @@ def render_tab_content(tab_switch, stopped_interval):
                 build_quick_stats_panel(),
                 html.Div(
                     id="graphs-container",
-                    children=[build_top_panel(stopped_interval), build_chart_panel()],
+                    children=[build_top_panel(), build_chart_panel()],
                 ),
                 html.Div(
                     className = "content-tile",
-                    id="right-bar-summary",
                     style={ "width":        "25%",
                             "margin-left": "0.8rem",
                             "flex": "1 1",
-                            "padding": "2rem",
+                            "padding": "0rem",
                             #"background-color": "transparent",
                             "max-width": "25%",
                     },
@@ -476,18 +408,78 @@ def render_tab_content(tab_switch, stopped_interval):
         stopped_interval,
     )
 
+#======================================================================================================================================
+#========================       GENERAR GRAFICAS         ==============================================================================
+#======================================================================================================================================
+
+def plot_wordcloud(data): #crea wordcloud
+    wc = WordCloud(max_font_size=100, max_words=100, background_color="white",
+                   scale = 10,width=320, height=300,
+                   colormap="ocean").generate(data)
+    return wc.to_image()
 
 
-# Update interval
-@app.callback(
-    Output("n-interval-stage", "data"),
-    [Input("app-tabs", "value")],
-    [
-        State("interval-component", "n_intervals"),
-        State("interval-component", "disabled"),
-        State("n-interval-stage", "data"),
-    ],
-)
+@app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
+def make_image(b): #genera la imagen del wordcloud
+    df_wc= ''.join(df.text)
+    img = BytesIO()
+    plot_wordcloud(data=df_wc).save(img, format='PNG')
+    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
+
+
+def generate_bar(df_tweets): # genera grafica de barras de sentimiento
+    df_bar=sentiment_summary(df_tweets)
+    total=df_bar['count'].sum()
+    y_positive=round(df_bar.loc['Positive'].values[0]/total, 2)
+    y_negative=round(df_bar.loc['Negative'].values[0]/total, 2)
+    y_neutral=round(df_bar.loc['Neutral'].values[0]/total, 2)
+    
+    fig = go.Figure(go.Bar(x=["positive"], y=[y_positive],text=str(y_positive)+' %',
+                           textposition='auto', marker_color="rgb(20, 145, 153)"))
+    fig.add_trace(go.Bar(x=["negative"], y=[y_negative],text=str(y_negative)+' %',
+                         textposition='auto', marker_color="rgb(187, 37, 37)"))
+    fig.add_trace(go.Bar(x=["neutral"], y=[y_neutral],text=str(y_neutral)+' %',
+                         textposition='auto',marker_color="#f4d44d"))
+    
+    fig.update_layout(barmode='stack', xaxis={'categoryorder':'total descending'}, 
+                      height=260,margin=dict(l=10,r=15,b=10,t=15,pad=4),showlegend=False,
+                      plot_bgcolor = '#f1f6ff')
+    return fig
+
+
+def generate_line(df_tweets): # genera grafica de tiempo
+    df_line=month_summary(df_tweets)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Positivo,
+                             mode='lines',
+                             name='positive',
+                             line=dict(color="rgb(20, 145, 153)"),
+                            ))
+    fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Negativo,
+                             mode='lines',
+                             name='negative',
+                             line=dict(color="rgb(187, 37, 37)"),
+                            ))
+    fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Neutro,
+                             mode='lines',
+                             name='neutral',
+                             line=dict(color="#f4d44d"),
+                            ))
+    
+    fig.update_layout(height=260,margin=dict(l=10,r=15,b=10,t=15,pad=4),showlegend=False,plot_bgcolor = '#f1f6ff')
+  
+    return fig
+
+
+
+
+
+#======================================================================================================================================
+#===============================      NO ENTIENDO PARA QUE FUNCIONA!!!      ===========================================================
+#======================================================================================================================================
+
+
+
 def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
     if disabled:
         return cur_interval
@@ -497,12 +489,6 @@ def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
     return cur_stage
 
 
-# Callbacks for stopping interval update
-@app.callback(
-    [Output("interval-component", "disabled"), Output("stop-button", "buttonText")],
-    [Input("stop-button", "n_clicks")],
-    [State("interval-component", "disabled")],
-)
 def stop_production(n_clicks, current):
     if n_clicks == 0:
         return True, "start"
@@ -510,10 +496,7 @@ def stop_production(n_clicks, current):
 
 
 # ======= Callbacks for modal popup =======
-@app.callback(
-    Output("markdown", "style"),
-    [Input("markdown_close", "n_clicks")],
-)
+
 def update_click_output(button_click):
     ctx = dash.callback_context
 
@@ -523,62 +506,10 @@ def update_click_output(button_click):
     return {"display": "none"}
 
 
-# decorator for list of output
-def create_callback(param):
-    def callback(interval, stored_data):
-        count, ooc_n, ooc_g_value, indicator = update_count(
-            interval, param, stored_data
-        )
-        spark_line_data = update_sparkline(interval, param)
-        return count, spark_line_data, ooc_n, ooc_g_value, indicator
 
-    return callback
+#======================================================================================================================================
+#===============================      CORRER EL SERVIDOR      =========================================================================
+#======================================================================================================================================
 
-
-for param in params[1:]:
-    update_param_row_function = create_callback(param)
-    app.callback(
-        output=[
-            Output(param + suffix_count, "children"),
-            Output(param + suffix_sparkline_graph, "extendData"),
-            Output(param + suffix_ooc_n, "children"),
-            Output(param + suffix_ooc_g, "value"),
-            Output(param + suffix_indicator, "color"),
-        ],
-        inputs=[Input("interval-component", "n_intervals")],
-        state=[State("value-setter-store", "data")],
-    )(update_param_row_function)
-
-
-
-
-# Update piechart
-@app.callback(
-    output=Output("piechart", "figure"),
-    inputs=[Input("interval-component", "n_intervals")],
-    state=[State("value-setter-store", "data")],
-)
-def update_piechart(interval, stored_data):
-    if interval == 0:
-        return {
-            "data": [],
-            "layout": {
-                "font": {"color": "#000000"},
-                "paper_bgcolor": "rgba(0,0,0,0)",
-                "plot_bgcolor": "rgba(0,0,0,0)",
-            },
-        }
-
-    if interval >= max_length:
-        total_count = max_length - 1
-    else:
-        total_count = interval - 1
-
-    new_figure = {
-    }
-    return new_figure
-
-
-# Running the server
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8050)
+    app.run_server(debug=False, port=8050, host='0.0.0.0')
