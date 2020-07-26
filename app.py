@@ -18,7 +18,6 @@ import joblib as jb
 #===============================      APP START    ====================================================================================
 #======================================================================================================================================
 
-
 app = dash.Dash(
     __name__,
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
@@ -34,44 +33,39 @@ APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 #===============================      DATA FRAMES   ===================================================================================
 #======================================================================================================================================
 
-
-
-
 df = jb.load(os.path.join(APP_PATH, os.path.join("data", "base_historica_calificada.joblib")))
 df['popular']=df['replies']+df['retweets']+df['favorites']
 df['month']=df.date.dt.to_period("M")
 df['month']=df.month.map(str)
 
+caja_init=['Cafam','Colsubsidio','Compensar']
 
 params = list(df)
 max_length = len(df)
 
 
-t_sentiment='negative'
-t_text="@Compensar_info buenos días. Tengo inconveniente con la afiliación de un empleado y no encuentro un canal para solucionar. ¿Por favor me podría colaborar?"
-t_date='04:59:57 - Jul 18, 2020'
-s_color="rgb(187, 37, 37)"
-
-
-def sentiment_summary(df_tweets):
+def sentiment_summary(df_tweets, cajas):
     di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
-    sentiment=df_tweets.groupby('sentiment').count()['date'].reset_index()
+    sentiment=df_tweets[df_tweets['name_caja'].isin(cajas)].groupby('sentiment').count()['date'].reset_index()
     sentiment.columns=['sentiment','count']
     sentiment=sentiment.replace({'sentiment': di})
     sentiment=sentiment.set_index('sentiment')
     return sentiment
 
 
-def month_summary(df_tweets):
-    month=df_tweets.groupby(['month','sentiment']).count()['date'].reset_index()
+def month_summary(df_tweets,cajas):
+    month=df_tweets[df_tweets['name_caja'].isin(cajas)].groupby(['month','sentiment']).count()['date'].reset_index()
     month=month.pivot(index='month', columns='sentiment', values='date')
     return month
 
-def pop_tweets_summary (df_tweets):
+def pop_tweets_summary (df_tweets,cajas):
     di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
-    pop_tweets=df.sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
+    pop_tweets=df_tweets[df_tweets['name_caja'].isin(cajas)].sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
     pop_tweets=pop_tweets.replace({'sentiment': di})
     return pop_tweets
+
+
+
 
 
 def init_df():
@@ -172,17 +166,36 @@ def build_quick_stats_panel():
     return html.Div(
         id="quick-stats",
         children=[
+            generate_section_banner("Controls"),
+            html.Div(
+                id="card-0",
+                children=[
+                    html.P("Caja de Compensación:"),
+                    dcc.Checklist(
+                        id="check_caja",
+                        options=[
+                            {'label': 'Compensar', 'value': 'Compensar'},
+                            {'label': 'Cafam', 'value': 'Cafam'},
+                            {'label': 'Colsubsidio', 'value': 'Colsubsidio'}
+                        ],
+                        value=['Compensar', 'Cafam', 'Colsubsidio']
+                    ),
+                ],
+            ),
             generate_section_banner("Tweets Summary"),
             html.Div(
                 id="card-0",
                 children=[
-                    html.P("10%",
-                          style={"text-align": "center",
+                    html.P(
+                        id="sent-perc",
+                        
+                        style={"text-align": "center",
                                 "font-size": "30px",
                                 "font-weigh": "600",
                                 "color": "rgb(55, 188, 200)",
                                 "margin-bottom":"0",
                                 },
+                        children=["10%"],
                           ),
                     html.P("Sentiment",
                           style={"text-align": "center",
@@ -197,13 +210,15 @@ def build_quick_stats_panel():
             html.Div(
                 id="card-1",
                 children=[
-                    html.P(str(len(df)),
-                          style={"text-align": "center",
-                                "font-size": "30px",
-                                "font-weigh": "600",
-                                "color": "rgb(55, 188, 200)",
-                                "margin-bottom":"0",
-                                },
+                    html.P(
+                        id="interactions",
+                        style={"text-align": "center",
+                            "font-size": "30px",
+                            "font-weigh": "600",
+                            "color": "rgb(55, 188, 200)",
+                            "margin-bottom":"0",
+                            },
+                        children=[str(len(df))],
                           ),
                     html.P("Interactions",
                           style={"text-align": "center",
@@ -218,13 +233,15 @@ def build_quick_stats_panel():
             html.Div(
                 id="card-2",
                 children=[
-                    html.P("7500",
-                          style={"text-align": "center",
-                                "font-size": "30px",
-                                "font-weigh": "600",
-                                "color": "rgb(55, 188, 200)",
-                                "margin-bottom":"0",
-                                },
+                    html.P(
+                        id="users",
+                        style={"text-align": "center",
+                            "font-size": "30px",
+                            "font-weigh": "600",
+                            "color": "rgb(55, 188, 200)",
+                            "margin-bottom":"0",
+                            },
+                        children=[len(df['author_id'].unique())]
                           ),
                     html.P("Users",
                            style={"text-align": "center",
@@ -271,7 +288,9 @@ def build_top_panel():
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Sentiment breakdown"),
-                    dcc.Graph(figure= generate_bar(df)),
+                    dcc.Graph(
+                        id="bar-graph",
+                        figure= generate_bar(df,caja_init)),
                ],
                 
             ),
@@ -288,15 +307,16 @@ def build_chart_panel():
         className="content-tile twelve columns",
         children=[
             generate_section_banner("Sentiment over time"),
-            dcc.Graph(figure= generate_line(df)
+            dcc.Graph(id="line-graph",
+                figure= generate_line(df,caja_init)
                 
             ),
         ],
     )
 
 
-def build_tweet_card(i):
-    pop_tweets=pop_tweets_summary(df)
+def build_tweet_card(i,cajas):
+    pop_tweets=pop_tweets_summary(df,cajas)
     colors={'Negative':'rgb(187, 37, 37)','Positive':'rgb(20, 145, 153)','Neutral':'#f4d44d'}
     t_sentiment=pop_tweets.loc[i]['sentiment']
     t_text=pop_tweets.loc[i]['text']
@@ -331,15 +351,15 @@ def build_tweet_card(i):
     
         
 
-def build_relevant_tweets():
+def build_relevant_tweets(cajas):
     return html.Div(
         className="content-tile",
         children=[
             generate_section_banner("Relevant tweets"),
-            build_tweet_card(0),
-            build_tweet_card(1),
-            build_tweet_card(2),
-            build_tweet_card(3),
+            build_tweet_card(0,cajas),
+            build_tweet_card(1,cajas),
+            build_tweet_card(2,cajas),
+            build_tweet_card(3,cajas),
         ],
         style={"margin-left": "1.8rem",},
     )
@@ -390,6 +410,7 @@ def render_tab_content(tab_switch, stopped_interval):
                     children=[build_top_panel(), build_chart_panel()],
                 ),
                 html.Div(
+                    id="tweets",
                     className = "content-tile",
                     style={ "width":        "25%",
                             "margin-left": "0.8rem",
@@ -399,7 +420,7 @@ def render_tab_content(tab_switch, stopped_interval):
                             "max-width": "25%",
                     },
                     children=[
-                        build_relevant_tweets(),
+                        build_relevant_tweets(caja_init),
                     ],
                         
                 ),
@@ -414,21 +435,14 @@ def render_tab_content(tab_switch, stopped_interval):
 
 def plot_wordcloud(data): #crea wordcloud
     wc = WordCloud(max_font_size=100, max_words=100, background_color="white",
-                   scale = 10,width=320, height=300,
+                   scale = 10,width=380, height=290,
                    colormap="ocean").generate(data)
     return wc.to_image()
 
 
-@app.callback(Output('image_wc', 'src'), [Input('image_wc', 'id')])
-def make_image(b): #genera la imagen del wordcloud
-    df_wc= ''.join(df.text)
-    img = BytesIO()
-    plot_wordcloud(data=df_wc).save(img, format='PNG')
-    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
 
-
-def generate_bar(df_tweets): # genera grafica de barras de sentimiento
-    df_bar=sentiment_summary(df_tweets)
+def generate_bar(df_tweets, cajas): # genera grafica de barras de sentimiento
+    df_bar=sentiment_summary(df_tweets, cajas)
     total=df_bar['count'].sum()
     y_positive=round(df_bar.loc['Positive'].values[0]/total, 2)
     y_negative=round(df_bar.loc['Negative'].values[0]/total, 2)
@@ -447,8 +461,8 @@ def generate_bar(df_tweets): # genera grafica de barras de sentimiento
     return fig
 
 
-def generate_line(df_tweets): # genera grafica de tiempo
-    df_line=month_summary(df_tweets)
+def generate_line(df_tweets, cajas): # genera grafica de tiempo
+    df_line=month_summary(df_tweets, cajas)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Positivo,
                              mode='lines',
@@ -470,9 +484,73 @@ def generate_line(df_tweets): # genera grafica de tiempo
   
     return fig
 
+#======================================================================================================================================
+#===============================       CALLBACKS CONTROLs                   ===========================================================
+#======================================================================================================================================
+
+#Grafica de barras!
+@app.callback(
+    Output(component_id='bar-graph', component_property='figure'),
+    [Input(component_id='check_caja', component_property='value')]
+)
+def update_output(input_value):
+    return generate_bar(df,input_value)
 
 
+#Grafica de lineas!
+@app.callback(
+    Output(component_id='line-graph', component_property='figure'),
+    [Input(component_id='check_caja', component_property='value')]
+)
+def update_output(input_value):
+    return generate_line(df,input_value)
 
+
+#wordcloud
+@app.callback(
+    Output('image_wc', 'src'), 
+    [Input('image_wc', 'id'), Input(component_id='check_caja', component_property='value')]
+)
+def make_image(b, input_value): #genera la imagen del wordcloud
+    df_cajas=df[df['name_caja'].isin(input_value)]
+    df_wc= ''.join(df_cajas.text)
+    img = BytesIO()
+    plot_wordcloud(data=df_wc).save(img, format='PNG')
+    return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
+
+#tweets
+@app.callback(
+    Output(component_id='tweets', component_property='children'),
+    [Input(component_id='check_caja', component_property='value')]
+)
+def update_output(input_value):
+    return build_relevant_tweets(input_value)
+
+#quick-stats
+
+#percentage sentiment
+#@app.callback(
+#    Output(component_id='sent-perc', component_property='children'),
+#    [Input(component_id='check_caja', component_property='value')]
+#)
+#def update_output(input_value):
+#    return 
+
+#interactions
+@app.callback(
+    Output(component_id='interactions', component_property='children'),
+    [Input(component_id='check_caja', component_property='value')]
+)
+def update_output(input_value):
+    return str(len(df[df['name_caja'].isin(input_value)]))
+
+#users
+@app.callback(
+    Output(component_id='users', component_property='children'),
+    [Input(component_id='check_caja', component_property='value')]
+)
+def update_output(input_value):
+    return str(len(df[df['name_caja'].isin(input_value)]['author_id'].unique()))
 
 #======================================================================================================================================
 #===============================      NO ENTIENDO PARA QUE FUNCIONA!!!      ===========================================================
@@ -512,4 +590,4 @@ def update_click_output(button_click):
 #======================================================================================================================================
 
 if __name__ == "__main__":
-    app.run_server(debug=False, port=8050, host='0.0.0.0')
+    app.run_server(debug=True, port=8050, host='0.0.0.0')
