@@ -194,7 +194,7 @@ box-shadow: 10px 10px 16px 0px rgba(3, 38, 53, 0.637);
 .section-banner {
     font-size: 18px;
     color: #2f2935;
-    font-weight: 500;
+    font-weight: 700;
     text-align: left!important;
     position:relative;
     display: block;
@@ -256,7 +256,7 @@ def make_image(b):
   position: relative;
   z-index: 4;
   width: 100%;
-  margin-top: 0.8rem;
+  margin-top: 1.5rem;
 }
 
 #metric-summary-session {

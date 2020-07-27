@@ -307,7 +307,8 @@ def build_top_panel():
                     generate_section_banner("Most Frequent words"),
                     html.Img(id="image_wc",style={
                             "max-width": "95%",
-                            "max-height":"90%"
+                            "max-height":"90%",
+                            "margin_bottom":"1rem",
                             }),
                 ],
             ),
