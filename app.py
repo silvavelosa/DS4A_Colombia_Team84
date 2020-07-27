@@ -12,7 +12,7 @@ from wordcloud import WordCloud
 from io import BytesIO
 import pandas as pd
 import joblib as jb
-
+from datetime import datetime as dt
 
 #======================================================================================================================================
 #===============================      APP START    ====================================================================================
@@ -37,30 +37,45 @@ df = jb.load(os.path.join(APP_PATH, os.path.join("data", "base_historica_calific
 df['popular']=df['replies']+df['retweets']+df['favorites']
 df['month']=df.date.dt.to_period("M")
 df['month']=df.month.map(str)
+df['date_2']=df['date'].apply(lambda x: x.tz_localize(None))
 
 caja_init=['Cafam','Colsubsidio','Compensar']
+date1=dt(2020,1,1)
+date2=dt(2020,6,30)
 
 params = list(df)
 max_length = len(df)
 
+def filter_df(df_tweets, cajas, date_init, date_end):
+    df_temp=df_tweets[
+    (df_tweets['name_caja'].isin(cajas)) & 
+    (df_tweets['date_2'] >= date_init) & 
+    (df_tweets['date_2'] <= date_end)]
+    return df_temp
 
-def sentiment_summary(df_tweets, cajas):
+def sentiment_summary(df_tweets, cajas, date_init, date_end):
     di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
-    sentiment=df_tweets[df_tweets['name_caja'].isin(cajas)].groupby('sentiment').count()['date'].reset_index()
+
+    df_temp=filter_df(df_tweets, cajas, date_init, date_end)
+    
+    sentiment=df_temp.groupby('sentiment').count()['date'].reset_index()
     sentiment.columns=['sentiment','count']
     sentiment=sentiment.replace({'sentiment': di})
     sentiment=sentiment.set_index('sentiment')
     return sentiment
 
-
-def month_summary(df_tweets,cajas):
-    month=df_tweets[df_tweets['name_caja'].isin(cajas)].groupby(['month','sentiment']).count()['date'].reset_index()
+def month_summary(df_tweets, cajas, date_init, date_end):
+    df_temp=filter_df(df_tweets, cajas, date_init, date_end)
+    
+    month=df_temp.groupby(['month','sentiment']).count()['date'].reset_index()
     month=month.pivot(index='month', columns='sentiment', values='date')
     return month
 
-def pop_tweets_summary (df_tweets,cajas):
+def pop_tweets_summary (df_tweets,cajas, date_init, date_end):
     di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
-    pop_tweets=df_tweets[df_tweets['name_caja'].isin(cajas)].sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
+    df_temp=filter_df(df_tweets, cajas, date_init, date_end)
+    
+    pop_tweets=df_temp.sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
     pop_tweets=pop_tweets.replace({'sentiment': di})
     return pop_tweets
 
@@ -182,6 +197,20 @@ def build_quick_stats_panel():
                     ),
                 ],
             ),
+            html.Div(
+                id="card-0",
+                children=[
+                    html.P("Date Range:"),
+                    dcc.DatePickerRange(
+                        id='my-date-picker-range',
+                        min_date_allowed=dt(2017, 1, 1),
+                        max_date_allowed=dt(2020, 7, 15),
+                        initial_visible_month=dt(2020, 7, 1),
+                        start_date=date1,
+                        end_date=date2,
+                    ),
+                ],
+            ),
             generate_section_banner("Tweets Summary"),
             html.Div(
                 id="card-0",
@@ -218,7 +247,7 @@ def build_quick_stats_panel():
                             "color": "rgb(55, 188, 200)",
                             "margin-bottom":"0",
                             },
-                        children=[str(len(df))],
+                        children=[len(filter_df(df,caja_init,date1,date2))],
                           ),
                     html.P("Interactions",
                           style={"text-align": "center",
@@ -241,7 +270,7 @@ def build_quick_stats_panel():
                             "color": "rgb(55, 188, 200)",
                             "margin-bottom":"0",
                             },
-                        children=[len(df['author_id'].unique())]
+                        children=[ len(filter_df(df,caja_init,date1,date2)['author_id'].unique())]
                           ),
                     html.P("Users",
                            style={"text-align": "center",
@@ -290,7 +319,7 @@ def build_top_panel():
                     generate_section_banner("Sentiment breakdown"),
                     dcc.Graph(
                         id="bar-graph",
-                        figure= generate_bar(df,caja_init)),
+                        figure= generate_bar(df,caja_init,date1,date2)),
                ],
                 
             ),
@@ -308,15 +337,15 @@ def build_chart_panel():
         children=[
             generate_section_banner("Sentiment over time"),
             dcc.Graph(id="line-graph",
-                figure= generate_line(df,caja_init)
+                figure= generate_line(df,caja_init,date1,date2)
                 
             ),
         ],
     )
 
 
-def build_tweet_card(i,cajas):
-    pop_tweets=pop_tweets_summary(df,cajas)
+def build_tweet_card(i,cajas, date_init, date_end):
+    pop_tweets=pop_tweets_summary(df,cajas, date_init, date_end)
     colors={'Negative':'rgb(187, 37, 37)','Positive':'rgb(20, 145, 153)','Neutral':'#f4d44d'}
     t_sentiment=pop_tweets.loc[i]['sentiment']
     t_text=pop_tweets.loc[i]['text']
@@ -351,15 +380,15 @@ def build_tweet_card(i,cajas):
     
         
 
-def build_relevant_tweets(cajas):
+def build_relevant_tweets(cajas,date_init,date_end):
     return html.Div(
         className="content-tile",
         children=[
             generate_section_banner("Relevant tweets"),
-            build_tweet_card(0,cajas),
-            build_tweet_card(1,cajas),
-            build_tweet_card(2,cajas),
-            build_tweet_card(3,cajas),
+            build_tweet_card(0,cajas,date_init,date_end),
+            build_tweet_card(1,cajas,date_init,date_end),
+            build_tweet_card(2,cajas,date_init,date_end),
+            build_tweet_card(3,cajas,date_init,date_end),
         ],
         style={"margin-left": "1.8rem",},
     )
@@ -387,6 +416,7 @@ app.layout = html.Div(
         dcc.Store(id="n-interval-stage", data=50),   
     ],
 )
+
 
 @app.callback(
     [Output("app-content", "children"), Output("interval-component", "n_intervals")],
@@ -420,7 +450,7 @@ def render_tab_content(tab_switch, stopped_interval):
                             "max-width": "25%",
                     },
                     children=[
-                        build_relevant_tweets(caja_init),
+                        build_relevant_tweets(caja_init,date1,date2),
                     ],
                         
                 ),
@@ -441,8 +471,8 @@ def plot_wordcloud(data): #crea wordcloud
 
 
 
-def generate_bar(df_tweets, cajas): # genera grafica de barras de sentimiento
-    df_bar=sentiment_summary(df_tweets, cajas)
+def generate_bar(df_tweets, cajas, date_init, date_end): # genera grafica de barras de sentimiento
+    df_bar=sentiment_summary(df_tweets, cajas, date_init, date_end)
     total=df_bar['count'].sum()
     y_positive=round(df_bar.loc['Positive'].values[0]/total, 2)
     y_negative=round(df_bar.loc['Negative'].values[0]/total, 2)
@@ -461,8 +491,8 @@ def generate_bar(df_tweets, cajas): # genera grafica de barras de sentimiento
     return fig
 
 
-def generate_line(df_tweets, cajas): # genera grafica de tiempo
-    df_line=month_summary(df_tweets, cajas)
+def generate_line(df_tweets, cajas, date_init, date_end): # genera grafica de tiempo
+    df_line=month_summary(df_tweets, cajas, date_init, date_end)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Positivo,
                              mode='lines',
@@ -491,29 +521,36 @@ def generate_line(df_tweets, cajas): # genera grafica de tiempo
 #Grafica de barras!
 @app.callback(
     Output(component_id='bar-graph', component_property='figure'),
-    [Input(component_id='check_caja', component_property='value')]
+    [Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
-def update_output(input_value):
-    return generate_bar(df,input_value)
+def update_output(input_value, start_date,end_date ):
+    return generate_bar(df,input_value,start_date,end_date )
 
 
 #Grafica de lineas!
 @app.callback(
     Output(component_id='line-graph', component_property='figure'),
-    [Input(component_id='check_caja', component_property='value')]
+    [Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
-def update_output(input_value):
-    return generate_line(df,input_value)
+def update_output(input_value,start_date,end_date):
+    return generate_line(df,input_value,start_date,end_date)
 
 
 #wordcloud
 @app.callback(
     Output('image_wc', 'src'), 
-    [Input('image_wc', 'id'), Input(component_id='check_caja', component_property='value')]
+    [Input('image_wc', 'id'), 
+     Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
-def make_image(b, input_value): #genera la imagen del wordcloud
-    df_cajas=df[df['name_caja'].isin(input_value)]
-    df_wc= ''.join(df_cajas.text)
+def make_image(b, input_value, start_date, end_date): #genera la imagen del wordcloud
+    df_temp=filter_df(df, input_value, start_date, end_date)
+    df_wc= ''.join(df_temp.text)
     img = BytesIO()
     plot_wordcloud(data=df_wc).save(img, format='PNG')
     return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
@@ -521,10 +558,12 @@ def make_image(b, input_value): #genera la imagen del wordcloud
 #tweets
 @app.callback(
     Output(component_id='tweets', component_property='children'),
-    [Input(component_id='check_caja', component_property='value')]
+    [Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
-def update_output(input_value):
-    return build_relevant_tweets(input_value)
+def update_output(input_value,start_date,end_date):
+    return build_relevant_tweets(input_value,start_date,end_date)
 
 #quick-stats
 
@@ -539,18 +578,24 @@ def update_output(input_value):
 #interactions
 @app.callback(
     Output(component_id='interactions', component_property='children'),
-    [Input(component_id='check_caja', component_property='value')]
+    [Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
-def update_output(input_value):
-    return str(len(df[df['name_caja'].isin(input_value)]))
+def update_output(input_value,start_date,end_date):
+    df_temp=filter_df(df, input_value, start_date, end_date)
+    return str(len(df_temp))
 
 #users
 @app.callback(
     Output(component_id='users', component_property='children'),
-    [Input(component_id='check_caja', component_property='value')]
+    [Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date')]
 )
-def update_output(input_value):
-    return str(len(df[df['name_caja'].isin(input_value)]['author_id'].unique()))
+def update_output(input_value,start_date,end_date):
+    df_temp=filter_df(df, input_value, start_date, end_date)
+    return str(len(df_temp['author_id'].unique()))
 
 #======================================================================================================================================
 #===============================      NO ENTIENDO PARA QUE FUNCIONA!!!      ===========================================================
