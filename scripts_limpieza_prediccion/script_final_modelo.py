@@ -71,7 +71,7 @@ def get_all_tweets(query, date_since, date_until, name_caja, n_jobs_func=24):
     return df_tweets_hist
 
 
-def clean_tweets(df):
+def clean_tweets_compensar(df):
     df['date'] = pd.to_datetime(df['date'])
     df['text_clean'] = df['text'].apply(lambda x: str.lower(x))
     df['text_clean'] = df['text_clean'].str.replace(' m. familiar ', ' medicina familiar ')
@@ -92,6 +92,7 @@ def clean_tweets(df):
     df['text_clean'] = df['text_clean'].str.replace(' q ', ' que ')
     df['text_clean'] = df['text_clean'].str.replace(' xq ', ' por que ')
     df['text_clean'] = df['text_clean'].str.replace(' xa ', ' para ')
+    df['text_clean'] = df['text_clean'].str.replace(' min ', ' minutos ')
     df['text_clean'] = df['text_clean'].str.replace(' hrs ', ' horas ')
     df['text_clean'] = df['text_clean'].str.replace(' atn ', ' atención ')
     df['text_clean'] = df['text_clean'].str.replace(' dra ', ' doctora ')
@@ -137,8 +138,147 @@ def clean_tweets(df):
     return df
 
 
-def calif_tweets(df):
-    tweets_clean = clean_tweets(df)
+def clean_tweets_colsubsidio(df):
+    #df = tweets_colsubsidio
+    df['date'] = pd.to_datetime(df['date'])
+    df['text_clean'] = df['text'].apply(lambda x: str.lower(x))
+    df['text_clean'] = df['text_clean'].str.replace(' m. familiar ', ' medicina familiar ')
+    df['text_clean'] = df['text_clean'].str.replace(' m ', ' me ')
+    df['text_clean'] = df['text_clean'].str.replace(' bb ', ' bebe ')
+    df['text_clean'] = df['text_clean'].str.replace(' bn ', ' bien ')
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("u\\.u", " que decepción ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\\.", "", x))
+    df['text_clean'] = df['text_clean'].str.replace('http\S+', ' ')
+    df['text_clean'] = df['text_clean'].str.replace('[^\w\s]', ' ')
+    df['text_clean'] = df['text_clean'].str.replace(' cc ', ' documento de identificación ')
+    df['text_clean'] = df['text_clean'].str.replace(' cm ', ' administrador de la cuenta ')
+    df['text_clean'] = df['text_clean'].str.replace(' inf ', ' información ')
+    df['text_clean'] = df['text_clean'].str.replace(' num ', ' numero ')
+    df['text_clean'] = df['text_clean'].str.replace(' d ', ' de ')
+    df['text_clean'] = df['text_clean'].str.replace(' min ', ' minutos ')
+    df['text_clean'] = df['text_clean'].str.replace(' x ', ' por ')
+    df['text_clean'] = df['text_clean'].str.replace(' k ', ' que ')
+    df['text_clean'] = df['text_clean'].str.replace(' q ', ' que ')
+    df['text_clean'] = df['text_clean'].str.replace(' xq ', ' por que ')
+    df['text_clean'] = df['text_clean'].str.replace(' xa ', ' para ')
+    df['text_clean'] = df['text_clean'].str.replace(' hrs ', ' horas ')
+    df['text_clean'] = df['text_clean'].str.replace(' atn ', ' atención ')
+    df['text_clean'] = df['text_clean'].str.replace(' dra ', ' doctora ')
+    df['text_clean'] = df['text_clean'].str.replace(' srs ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace(' sres ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace('srs ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace('sres ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace(' sr ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace(' pag ', ' pagina ')
+    df['text_clean'] = df['text_clean'].str.replace(' fvr ', ' favor ')
+    df['text_clean'] = df['text_clean'].str.replace(' dr ', ' doctor ')
+    df['text_clean'] = df['text_clean'].str.replace(' med ', ' medico ')
+    df['text_clean'] = df['text_clean'].str.replace(' porq ', ' porque ')
+    df['text_clean'] = df['text_clean'].str.replace(' pa ', ' para ')
+    df['text_clean'] = df['text_clean'].str.replace(' urg ', ' urgencias ')
+    df['text_clean'] = df['text_clean'].str.replace(' plan obligatorio de salud ', ' doctor ')
+    df['text_clean'] = df['text_clean'].str.replace(' dm ', ' mensaje directo ')
+    df['text_clean'] = df['text_clean'].str.replace('dm ', ' mensaje directo ')
+    df['text_clean'] = df['text_clean'].str.replace(' dm', ' mensaje directo ')
+    df['text_clean'] = df['text_clean'].str.replace(' a al u ', ' atención al usuario ')
+    df['text_clean'] = df['text_clean'].str.replace(' at al u ', ' atención al usuario ')
+    df['text_clean'] = df['text_clean'].str.replace('uds ', ' ustedes ')
+    df['text_clean'] = df['text_clean'].str.replace(' uds', ' ustedes ')
+    df['text_clean'] = df['text_clean'].str.replace(' uds ', ' ustedes ')
+    df['text_clean'] = df['text_clean'].str.replace(' ud ', ' usted ')
+    df['text_clean'] = df['text_clean'].str.replace(' ej ', ' ejemplo ')
+    df['text_clean'] = df['text_clean'].str.replace(' fa ', ' favor ')
+    df['text_clean'] = df['text_clean'].str.replace(' hv ', ' hoja de vida ')
+    df['text_clean'] = df['text_clean'].str.replace(' tel ', ' telefono ')
+    df['text_clean'] = df['text_clean'].str.replace(' gbno ', ' gobierno ')
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\scolsubsidio\s", " colsubsidio_Ofi ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("colsubsidio\s", "colsubsidio_Ofi ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\scolsubsidio$", "colsubsidio_Ofi ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\spc\s", " plan complementario ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub('\s+', ' ', x))
+    # word = word.replace(' x ', ' por ')
+    # word = word.replace(' q ', ' que ')
+    # word = word.replace(' k ', ' que ')
+    df['text_clean'] = df['text_clean'].apply(lambda x: x.rstrip())
+    df['text_clean'] = df['text_clean'].apply(lambda x: x.lstrip())
+    mask = ~df['text_clean'].str.contains('colsubsidio_Ofi') & df['username'] == 'colsubsidio_Ofi'
+    df.loc[mask, 'text_clean'] = df.loc[mask, 'text_clean'].apply(lambda x: 'colsubsidio_Ofi '.join(x))
+    return df
+
+def clean_tweets_cafam(df):
+    df['date'] = pd.to_datetime(df['date'])
+    df['text_clean'] = df['text'].apply(lambda x: str.lower(x))
+    df['text_clean'] = df['text_clean'].str.replace(' m. familiar ', ' medicina familiar ')
+    df['text_clean'] = df['text_clean'].str.replace(' m ', ' me ')
+    df['text_clean'] = df['text_clean'].str.replace(' bb ', ' bebe ')
+    df['text_clean'] = df['text_clean'].str.replace(' bn ', ' bien ')
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("u\\.u", " que decepción ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\\.", "", x))
+    df['text_clean'] = df['text_clean'].str.replace('http\S+', ' ')
+    df['text_clean'] = df['text_clean'].str.replace('[^\w\s]', ' ')
+    df['text_clean'] = df['text_clean'].str.replace(' cc ', ' documento de identificación ')
+    df['text_clean'] = df['text_clean'].str.replace(' cm ', ' administrador de la cuenta ')
+    df['text_clean'] = df['text_clean'].str.replace(' inf ', ' información ')
+    df['text_clean'] = df['text_clean'].str.replace(' num ', ' numero ')
+    df['text_clean'] = df['text_clean'].str.replace(' d ', ' de ')
+    df['text_clean'] = df['text_clean'].str.replace(' min ', ' minutos ')
+    df['text_clean'] = df['text_clean'].str.replace(' x ', ' por ')
+    df['text_clean'] = df['text_clean'].str.replace(' k ', ' que ')
+    df['text_clean'] = df['text_clean'].str.replace(' q ', ' que ')
+    df['text_clean'] = df['text_clean'].str.replace(' xq ', ' por que ')
+    df['text_clean'] = df['text_clean'].str.replace(' xa ', ' para ')
+    df['text_clean'] = df['text_clean'].str.replace(' hrs ', ' horas ')
+    df['text_clean'] = df['text_clean'].str.replace(' atn ', ' atención ')
+    df['text_clean'] = df['text_clean'].str.replace(' dra ', ' doctora ')
+    df['text_clean'] = df['text_clean'].str.replace(' srs ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace(' sres ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace('srs ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace('sres ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace(' sr ', ' señores ')
+    df['text_clean'] = df['text_clean'].str.replace(' pag ', ' pagina ')
+    df['text_clean'] = df['text_clean'].str.replace(' fvr ', ' favor ')
+    df['text_clean'] = df['text_clean'].str.replace(' dr ', ' doctor ')
+    df['text_clean'] = df['text_clean'].str.replace(' med ', ' medico ')
+    df['text_clean'] = df['text_clean'].str.replace(' porq ', ' porque ')
+    df['text_clean'] = df['text_clean'].str.replace(' pa ', ' para ')
+    df['text_clean'] = df['text_clean'].str.replace(' urg ', ' urgencias ')
+    df['text_clean'] = df['text_clean'].str.replace(' plan obligatorio de salud ', ' doctor ')
+    df['text_clean'] = df['text_clean'].str.replace(' dm ', ' mensaje directo ')
+    df['text_clean'] = df['text_clean'].str.replace('dm ', ' mensaje directo ')
+    df['text_clean'] = df['text_clean'].str.replace(' dm', ' mensaje directo ')
+    df['text_clean'] = df['text_clean'].str.replace(' a al u ', ' atención al usuario ')
+    df['text_clean'] = df['text_clean'].str.replace(' at al u ', ' atención al usuario ')
+    df['text_clean'] = df['text_clean'].str.replace('uds ', ' ustedes ')
+    df['text_clean'] = df['text_clean'].str.replace(' uds', ' ustedes ')
+    df['text_clean'] = df['text_clean'].str.replace(' uds ', ' ustedes ')
+    df['text_clean'] = df['text_clean'].str.replace(' ud ', ' usted ')
+    df['text_clean'] = df['text_clean'].str.replace(' ej ', ' ejemplo ')
+    df['text_clean'] = df['text_clean'].str.replace(' fa ', ' favor ')
+    df['text_clean'] = df['text_clean'].str.replace(' hv ', ' hoja de vida ')
+    df['text_clean'] = df['text_clean'].str.replace(' tel ', ' telefono ')
+    df['text_clean'] = df['text_clean'].str.replace(' gbno ', ' gobierno ')
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\scafam\s", " cafamoficial ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("cafam\s", "cafamoficial ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\scafam$", "cafamoficial ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub("\spc\s", " plan complementario ", x))
+    df['text_clean'] = df['text_clean'].apply(lambda x: re.sub('\s+', ' ', x))
+    # word = word.replace(' x ', ' por ')
+    # word = word.replace(' q ', ' que ')
+    # word = word.replace(' k ', ' que ')
+    df['text_clean'] = df['text_clean'].apply(lambda x: x.rstrip())
+    df['text_clean'] = df['text_clean'].apply(lambda x: x.lstrip())
+    mask = ~df['text_clean'].str.contains('cafamoficial') & df['username'] == 'cafamoficial'
+    df.loc[mask, 'text_clean'] = df.loc[mask, 'text_clean'].apply(lambda x: 'cafamoficial '.join(x))
+    return df
+
+def calif_tweets(df,caja):
+    if(caja == "cafamoficial"):
+        tweets_clean = clean_tweets_cafam(df)
+    if (caja == "Colsubsidio_Ofi"):
+        tweets_clean = clean_tweets_colsubsidio(df)
+    if (caja == "Compensar_info"):
+        tweets_clean = clean_tweets_compensar(df)
+    #tweets_clean = clean_tweets(df)
     tweets_clean["calif_sentiment"] = tweets_clean["text_clean"].apply(lambda x: clf.predict(x))
     tweets_clean["calif_sentiment"] = (tweets_clean["calif_sentiment"] - 0.5) * 2
     tweets_clean["sentiment"] = pd.cut(tweets_clean["calif_sentiment"], bins=[-2, -0.5, 0.2, 2],
@@ -146,13 +286,13 @@ def calif_tweets(df):
     return tweets_clean
 
 
-def get_tweets_and_clasific(query, date_since, date_until, n_jobs_func, df_hist, name_caja):
+def get_tweets_and_clasific(query, date_since, date_until, n_jobs_func, df_hist, name_caja, caja):
     base_new = get_all_tweets(query=query, date_since=date_since, name_caja=name_caja,
                               date_until=date_until, n_jobs_func=n_jobs_func)
     print("tweets obtenidos")
     mask_iden = ~(base_new['id'].isin(df_hist['id']))
     base_to_calif = base_new[mask_iden]
-    base_new_calif = calif_tweets(df=base_to_calif)
+    base_new_calif = calif_tweets(df=base_to_calif, caja=caja)
     base_retorno = df_hist.append(base_new_calif)
     return base_retorno
 
@@ -162,7 +302,8 @@ def get_tweets_and_clasific_several(consultas, date_since, date_until, n_jobs_fu
         q = "".join(['(to:', cuenta, ") (@", cuenta, ")"])
         print(nombre)
         df_hist = get_tweets_and_clasific(query=q, date_since=date_since, date_until=date_until,
-                                          n_jobs_func=n_jobs_func, df_hist=df_hist, name_caja=nombre)
+                                          n_jobs_func=n_jobs_func, df_hist=df_hist, name_caja=nombre,
+                                          caja=cuenta)
         df_hist = df_hist.reset_index(drop=True)
     return df_hist
 
@@ -170,7 +311,7 @@ def get_tweets_and_clasific_several(consultas, date_since, date_until, n_jobs_fu
 
 ###################################################################################
 ###LOAD DATA TWEETS
-with open('./base_historica_calificada.joblib', 'rb') as f:
+with open('./data/base_historica_calificada.joblib', 'rb') as f:
     tweets_historicos = joblib.load(f)
 #######LOAD CUENTAS
 with open('./data/consultas_tweets.xlsx', 'rb') as f:
@@ -182,8 +323,8 @@ inicio = datetime.today() - dt.timedelta(3)
 inicio = inicio.strftime('%Y-%m-%d')
 
 resultado = get_tweets_and_clasific_several(consultas=consultas, date_since=inicio, date_until=hoy,
-                                     n_jobs_func=1, df_hist=tweets_historicos
-                                     )
+                                            n_jobs_func=1, df_hist=tweets_historicos
+                                            )
 
 with open('./data/base_historica_calificada.joblib', 'wb') as f:
     dump(resultado, f)
