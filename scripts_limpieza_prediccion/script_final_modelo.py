@@ -4,12 +4,27 @@ import pandas as pd
 import GetOldTweets3 as got
 import datetime as dt
 from classifier import *
+import spacy
+from spacy.lang.es import Spanish
+from spacy.tokenizer import Tokenizer
+import es_core_news_lg
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
 
 clf = SentimentClassifier()
 
+nlp = es_core_news_lg.load()
+# contextualSpellCheck.add_to_pipe(nlp)
+tokenizer = Tokenizer(nlp.vocab)
+stop_words = nlp.Defaults.stop_words
+stop_words.add('compensar_info')
+stop_words.add('colsubsidio_ofi')
+stop_words.add('cafamoficial')
+stop_words.add('gracias')
+stop_words.add('hola')
+
 
 ######################################################################################################
-
 def convert_tweet_df(tweet):
     dict_info_tweet = {}
     dict_info_tweet['author_id'] = tweet.author_id
@@ -69,6 +84,18 @@ def get_all_tweets(query, date_since, date_until, name_caja, n_jobs_func=24):
     df_tweets_hist = pd.DataFrame(map(convert_tweet_df, flat_tweets))
     df_tweets_hist['name_caja'] = name_caja
     return df_tweets_hist
+
+
+def filter_and_tokenize(df, number):
+    """df: dataframe to filter
+       number: number of words to accept min
+    """
+    df['tokens'] = df.text_clean.apply(lambda x: word_tokenize(x))
+    df['tokens_count'] = df.tokens.apply(lambda x: len(x))
+    filtered_df = df[df['tokens_count'] > number]
+    filtered_df['chain_stop_words'] = filtered_df.tokens.apply(lambda x: [word for word in x if not word in stop_words])
+    filtered_df['clean_text_to_word'] = filtered_df['chain_stop_words'].apply(lambda x: ' '.join(str(v) for v in x))
+    return filtered_df
 
 
 def clean_tweets_compensar(df):
@@ -139,7 +166,7 @@ def clean_tweets_compensar(df):
 
 
 def clean_tweets_colsubsidio(df):
-    #df = tweets_colsubsidio
+    # df = tweets_colsubsidio
     df['date'] = pd.to_datetime(df['date'])
     df['text_clean'] = df['text'].apply(lambda x: str.lower(x))
     df['text_clean'] = df['text_clean'].str.replace(' m. familiar ', ' medicina familiar ')
@@ -204,6 +231,7 @@ def clean_tweets_colsubsidio(df):
     mask = ~df['text_clean'].str.contains('colsubsidio_Ofi') & df['username'] == 'colsubsidio_Ofi'
     df.loc[mask, 'text_clean'] = df.loc[mask, 'text_clean'].apply(lambda x: 'colsubsidio_Ofi '.join(x))
     return df
+
 
 def clean_tweets_cafam(df):
     df['date'] = pd.to_datetime(df['date'])
@@ -271,14 +299,15 @@ def clean_tweets_cafam(df):
     df.loc[mask, 'text_clean'] = df.loc[mask, 'text_clean'].apply(lambda x: 'cafamoficial '.join(x))
     return df
 
-def calif_tweets(df,caja):
-    if(caja == "cafamoficial"):
+
+def calif_tweets(df, caja):
+    if (caja == "cafamoficial"):
         tweets_clean = clean_tweets_cafam(df)
     if (caja == "Colsubsidio_Ofi"):
         tweets_clean = clean_tweets_colsubsidio(df)
     if (caja == "Compensar_info"):
         tweets_clean = clean_tweets_compensar(df)
-    #tweets_clean = clean_tweets(df)
+    # tweets_clean = clean_tweets(df)
     tweets_clean["calif_sentiment"] = tweets_clean["text_clean"].apply(lambda x: clf.predict(x))
     tweets_clean["calif_sentiment"] = (tweets_clean["calif_sentiment"] - 0.5) * 2
     tweets_clean["sentiment"] = pd.cut(tweets_clean["calif_sentiment"], bins=[-2, -0.5, 0.2, 2],
@@ -293,7 +322,8 @@ def get_tweets_and_clasific(query, date_since, date_until, n_jobs_func, df_hist,
     mask_iden = ~(base_new['id'].isin(df_hist['id']))
     base_to_calif = base_new[mask_iden]
     base_new_calif = calif_tweets(df=base_to_calif, caja=caja)
-    base_retorno = df_hist.append(base_new_calif)
+    base_append = filter_and_tokenize(df=base_new_calif, number=3)
+    base_retorno = df_hist.append(base_append)
     return base_retorno
 
 
@@ -306,7 +336,6 @@ def get_tweets_and_clasific_several(consultas, date_since, date_until, n_jobs_fu
                                           caja=cuenta)
         df_hist = df_hist.reset_index(drop=True)
     return df_hist
-
 
 
 ###################################################################################
@@ -325,6 +354,12 @@ inicio = inicio.strftime('%Y-%m-%d')
 resultado = get_tweets_and_clasific_several(consultas=consultas, date_since=inicio, date_until=hoy,
                                             n_jobs_func=1, df_hist=tweets_historicos
                                             )
-
 with open('./data/base_historica_calificada.joblib', 'wb') as f:
     dump(resultado, f)
+
+
+#my_cloud = WordCloud(background_color='white').generate(' '.join(resultado['clean_text_to_word']))
+#plt.imshow(my_cloud, interpolation='bilinear')
+#plt.axis("off")
+#plt.show()
+
