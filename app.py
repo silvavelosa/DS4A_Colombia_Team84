@@ -551,7 +551,7 @@ def update_output(input_value,start_date,end_date):
 )
 def make_image(b, input_value, start_date, end_date): #genera la imagen del wordcloud
     df_temp=filter_df(df, input_value, start_date, end_date)
-    df_wc= ''.join(df_temp.text)
+    df_wc= ''.join(df_temp.clean_text_to_word)
     img = BytesIO()
     plot_wordcloud(data=df_wc).save(img, format='PNG')
     return 'data:image/png;base64,{}'.format(base64.b64encode(img.getvalue()).decode())
@@ -636,4 +636,4 @@ def update_click_output(button_click):
 #======================================================================================================================================
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8050, host='0.0.0.0')
+    app.run_server(debug=True, port=8050)
