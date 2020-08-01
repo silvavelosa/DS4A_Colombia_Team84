@@ -93,6 +93,9 @@ def filter_and_tokenize(df, number):
     df['tokens'] = df.text_clean.apply(lambda x: word_tokenize(x))
     df['tokens_count'] = df.tokens.apply(lambda x: len(x))
     filtered_df = df[df['tokens_count'] > number]
+    filtered_df = filtered_df[filtered_df['username'] != "CafamOficial"]
+    filtered_df = filtered_df[filtered_df['username'] != "Colsubsidio_Ofi"]
+    filtered_df = filtered_df[filtered_df['username'] != "Compensar_info"]
     filtered_df['chain_stop_words'] = filtered_df.tokens.apply(lambda x: [word for word in x if not word in stop_words])
     filtered_df['clean_text_to_word'] = filtered_df['chain_stop_words'].apply(lambda x: ' '.join(str(v) for v in x))
     return filtered_df
@@ -338,6 +341,15 @@ def get_tweets_and_clasific_several(consultas, date_since, date_until, n_jobs_fu
     return df_hist
 
 
+def search_query(query, df):
+    token_query = word_tokenize(query)
+    tokens_for_search = [word for word in token_query if not word in stop_words]
+    df['cond_contiene'] = False
+    for token in tokens_for_search:
+        df['cond_contiene'] = df['cond_contiene'] | df['chain_stop_words'].apply(lambda x: token in x)
+    return df['cond_contiene']
+
+
 ###################################################################################
 ###LOAD DATA TWEETS
 with open('./data/base_historica_calificada.joblib', 'rb') as f:
@@ -358,8 +370,7 @@ with open('./data/base_historica_calificada.joblib', 'wb') as f:
     dump(resultado, f)
 
 
-#my_cloud = WordCloud(background_color='white').generate(' '.join(resultado['clean_text_to_word']))
-#plt.imshow(my_cloud, interpolation='bilinear')
-#plt.axis("off")
-#plt.show()
-
+# my_cloud = WordCloud(background_color='white').generate(' '.join(resultado['clean_text_to_word']))
+# plt.imshow(my_cloud, interpolation='bilinear')
+# plt.axis("off")
+# plt.show()
