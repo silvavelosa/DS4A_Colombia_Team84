@@ -5,7 +5,6 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-import dash_table
 import plotly.graph_objs as go
 import dash_daq as daq
 from wordcloud import WordCloud
@@ -13,6 +12,22 @@ from io import BytesIO
 import pandas as pd
 import joblib as jb
 from datetime import datetime as dt
+
+import spacy
+from spacy.tokenizer import Tokenizer
+from spacy.lang.es import Spanish
+import es_core_news_lg
+
+nlp = es_core_news_lg.load()
+# contextualSpellCheck.add_to_pipe(nlp)
+tokenizer = Tokenizer(nlp.vocab)
+stop_words = nlp.Defaults.stop_words
+stop_words.add('compensar_info')
+stop_words.add('colsubsidio_ofi')
+stop_words.add('cafamoficial')
+stop_words.add('gracias')
+stop_words.add('hola')
+
 
 #======================================================================================================================================
 #===============================      APP START    ====================================================================================
@@ -35,28 +50,29 @@ APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 
 df = jb.load(os.path.join(APP_PATH, os.path.join("data", "base_historica_calificada.joblib")))
 df['popular']=df['replies']+df['retweets']+df['favorites']
-df['month']=df.date.dt.to_period("M")
-df['month']=df.month.map(str)
 df['date_2']=df['date'].apply(lambda x: x.tz_localize(None))
-
+df['month']=df.date_2.dt.to_period("M")
+df['month']=df.month.map(str)
 caja_init=['Cafam','Colsubsidio','Compensar']
-date1=dt(2020,1,1)
-date2=dt(2020,6,30)
 
-params = list(df)
-max_length = len(df)
 
-def filter_df(df_tweets, cajas, date_init, date_end):
-    df_temp=df_tweets[
-    (df_tweets['name_caja'].isin(cajas)) & 
-    (df_tweets['date_2'] >= date_init) & 
-    (df_tweets['date_2'] <= date_end)]
+
+def filter_df(data):
+    if len(data['check_caja'])==0:
+        data['check_caja']=caja_init    
+    
+    df_temp=df[
+    (df['name_caja'].isin(data['check_caja'])) & 
+    (df['date_2'] >= data['start_date']) & 
+    (df['date_2'] <= data['end_date'])&
+    (search_query(data['query'], df))
+    ]
     return df_temp
 
-def sentiment_summary(df_tweets, cajas, date_init, date_end):
+def sentiment_summary(data):
     di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
 
-    df_temp=filter_df(df_tweets, cajas, date_init, date_end)
+    df_temp=filter_df(data)
     
     sentiment=df_temp.groupby('sentiment').count()['date'].reset_index()
     sentiment.columns=['sentiment','count']
@@ -64,40 +80,47 @@ def sentiment_summary(df_tweets, cajas, date_init, date_end):
     sentiment=sentiment.set_index('sentiment')
     return sentiment
 
-def month_summary(df_tweets, cajas, date_init, date_end):
-    df_temp=filter_df(df_tweets, cajas, date_init, date_end)
+def month_summary(data):
+    df_temp=filter_df(data)
     
     month=df_temp.groupby(['month','sentiment']).count()['date'].reset_index()
     month=month.pivot(index='month', columns='sentiment', values='date')
     return month
 
-def pop_tweets_summary (df_tweets,cajas, date_init, date_end):
+def pop_tweets_summary (data):
     di={'Negativo':'Negative','Positivo':'Positive','Neutro':'Neutral'}
-    df_temp=filter_df(df_tweets, cajas, date_init, date_end)
+    df_temp=filter_df(data)
     
     pop_tweets=df_temp.sort_values(by='popular',ascending=False).head(5)[['date','text','sentiment']].reset_index(drop=True)
     pop_tweets=pop_tweets.replace({'sentiment': di})
     return pop_tweets
 
-
-
+def search_query(query, df):
+    if (query == ''):
+        df['cond_contiene'] = True
+        return df['cond_contiene']
+    token_query = list(tokenizer(query))
+    tokens_for_search = [word for word in token_query if not word in stop_words]
+    df['cond_contiene'] = False
+    for token in tokens_for_search:
+        df['cond_contiene'] = df['cond_contiene'] | df['chain_stop_words'].apply(lambda x: str(token) in x)
+    return df['cond_contiene']
 
 
 def init_df():
-    ret = {}
-
-    return ret
+    data = {}
+    data['check_caja']=[]
+    data['start_date']=dt(2020,1,1)
+    data['end_date']=max(df['date_2'])
+    data['query']=''
+    return data
 
 state_dict = init_df()
-
 
 def init_value_setter_store():
     # Initialize store data
     state_dict = init_df()
     return state_dict
-
-
-
 
 
 #======================================================================================================================================
@@ -177,7 +200,7 @@ def build_tab_1():
         ),
     ]
 
-def build_quick_stats_panel():
+def build_quick_stats_panel(data):
     return html.Div(
         id="quick-stats",
         children=[
@@ -185,7 +208,7 @@ def build_quick_stats_panel():
             html.Div(
                 id="card-0",
                 children=[
-                    html.P("Caja de Compensación:"),
+                    html.P("Caja:", style={"font-weight": "bold"}),
                     dcc.Checklist(
                         id="check_caja",
                         options=[
@@ -193,40 +216,54 @@ def build_quick_stats_panel():
                             {'label': 'Cafam', 'value': 'Cafam'},
                             {'label': 'Colsubsidio', 'value': 'Colsubsidio'}
                         ],
-                        value=['Compensar', 'Cafam', 'Colsubsidio']
+                        value=data['check_caja']
                     ),
                 ],
             ),
             html.Div(
                 id="card-0",
                 children=[
-                    html.P("Date Range:"),
+                    html.P("Date Range:", style={"font-weight": "bold"}),
                     dcc.DatePickerRange(
                         id='my-date-picker-range',
-                        min_date_allowed=dt(2017, 1, 1),
-                        max_date_allowed=dt(2020, 7, 15),
-                        initial_visible_month=dt(2020, 7, 1),
-                        start_date=date1,
-                        end_date=date2,
+                        min_date_allowed=min(df['date_2']),
+                        max_date_allowed=max(df['date_2']),
+                        start_date=data['start_date'],
+                        end_date=data['end_date'],
+                        number_of_months_shown=2,
+                        day_size= 50,
+                        #with_portal=True,
+                        style={"z-index":"100","max-width": "100%","font-size": "smaller"},
+                    ),
+                ],
+            ),
+            html.Div(
+                id="card-0",
+                children=[
+                    html.P("Key Words:", style={"font-weight": "bold"}),
+                    dcc.Input(
+                        id="search",
+                        placeholder="insert keywords",
+                        value='',
+                        style={"max-width": "100%","font-size": "smaller"},
                     ),
                 ],
             ),
             generate_section_banner("Tweets Summary"),
             html.Div(
-                id="card-0",
+                id="card-1",
                 children=[
                     html.P(
-                        id="sent-perc",
-                        
+                        id="interactions",
                         style={"text-align": "center",
-                                "font-size": "30px",
-                                "font-weigh": "600",
-                                "color": "rgb(55, 188, 200)",
-                                "margin-bottom":"0",
-                                },
-                        children=["10%"],
+                            "font-size": "30px",
+                            "font-weigh": "600",
+                            "color": "rgb(55, 188, 200)",
+                            "margin-bottom":"0",
+                            },
+                        children=[len(filter_df(data))],
                           ),
-                    html.P("Sentiment",
+                    html.P("Interactions",
                           style={"text-align": "center",
                                 "font-size": "12px",
                                 "font-weigh": "100",
@@ -240,29 +277,6 @@ def build_quick_stats_panel():
                 id="card-1",
                 children=[
                     html.P(
-                        id="interactions",
-                        style={"text-align": "center",
-                            "font-size": "30px",
-                            "font-weigh": "600",
-                            "color": "rgb(55, 188, 200)",
-                            "margin-bottom":"0",
-                            },
-                        children=[len(filter_df(df,caja_init,date1,date2))],
-                          ),
-                    html.P("Interactions",
-                          style={"text-align": "center",
-                                "font-size": "12px",
-                                "font-weigh": "100",
-                                "color": "#BCCCDC",
-                                "margin-top":"0",
-                                },
-                          ),
-                ],
-            ),
-            html.Div(
-                id="card-2",
-                children=[
-                    html.P(
                         id="users",
                         style={"text-align": "center",
                             "font-size": "30px",
@@ -270,7 +284,7 @@ def build_quick_stats_panel():
                             "color": "rgb(55, 188, 200)",
                             "margin-bottom":"0",
                             },
-                        children=[ len(filter_df(df,caja_init,date1,date2)['author_id'].unique())]
+                        children=[ len(filter_df(data)['author_id'].unique())]
                           ),
                     html.P("Users",
                            style={"text-align": "center",
@@ -294,7 +308,7 @@ def generate_section_banner(title):
     
 
 
-def build_top_panel():
+def build_top_panel(data):
     return html.Div(
         id="top-section-container",
         className="row",
@@ -305,12 +319,17 @@ def build_top_panel():
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Most Frequent words"),
-                    html.Img(id="image_wc",style={
-                            "max-width": "95%",
-                            "max-height":"90%",
-                            "margin_bottom":"1rem",
-                            }),
-                ],
+                    dcc.Loading(
+                        children=[html.Img(id="image_wc",style={
+                                        "max-width": "95%",
+                                        "max-height":"90%",
+                                        "margin_bottom":"1.5rem"}),
+                                         ],
+                        type="default",
+                        color='#324d67ad',
+                        #style={"margin":"auto"},
+                    )
+               ],
             ),
             
             # Piechart
@@ -318,9 +337,16 @@ def build_top_panel():
                 className="content-tile six columns",
                 children=[
                     generate_section_banner("Sentiment breakdown"),
-                    dcc.Graph(
-                        id="bar-graph",
-                        figure= generate_bar(df,caja_init,date1,date2)),
+                dcc.Loading(
+                    children=[dcc.Graph(id="bar-graph",
+                                        figure= generate_bar(data)
+                                       ),
+                             ],
+                    type="default",
+                    color='#324d67ad',
+                    style={"margin":"auto"},
+                ),                    
+                    
                ],
                 
             ),
@@ -331,22 +357,27 @@ def build_top_panel():
 
 
 
-def build_chart_panel():
+def build_chart_panel(data):
     return html.Div(
         id="control-chart-container",
         className="content-tile twelve columns",
         children=[
             generate_section_banner("Sentiment over time"),
-            dcc.Graph(id="line-graph",
-                figure= generate_line(df,caja_init,date1,date2)
-                
+            dcc.Loading(
+                children=[dcc.Graph(id="line-graph",
+                                    figure= generate_line(data)
+                                   )
+                         ],
+                type="default",
+                color='#324d67ad',
+                style={"margin":"auto"},
             ),
         ],
     )
 
 
-def build_tweet_card(i,cajas, date_init, date_end):
-    pop_tweets=pop_tweets_summary(df,cajas, date_init, date_end)
+def build_tweet_card(i,data):
+    pop_tweets=pop_tweets_summary(data)
     colors={'Negative':'rgb(187, 37, 37)','Positive':'rgb(20, 145, 153)','Neutral':'#f4d44d'}
     t_sentiment=pop_tweets.loc[i]['sentiment']
     t_text=pop_tweets.loc[i]['text']
@@ -361,7 +392,7 @@ def build_tweet_card(i,cajas, date_init, date_end):
                             children=[html.P(t_date)],
                         ),
                         html.P(t_text,
-                            style={"font-size": "0.88vw",
+                            style={"font-size": "0.8vw",
                                    "color": "hsl(209, 28%, 39%)",
                                    "padding-top": "25px",
                                    "margin-top": "0.5rem",
@@ -381,15 +412,14 @@ def build_tweet_card(i,cajas, date_init, date_end):
     
         
 
-def build_relevant_tweets(cajas,date_init,date_end):
+def build_relevant_tweets(data):
     return html.Div(
         className="content-tile",
         children=[
             generate_section_banner("Relevant tweets"),
-            build_tweet_card(0,cajas,date_init,date_end),
-            build_tweet_card(1,cajas,date_init,date_end),
-            build_tweet_card(2,cajas,date_init,date_end),
-            build_tweet_card(3,cajas,date_init,date_end),
+            build_tweet_card(0,data),
+            build_tweet_card(1,data),
+            build_tweet_card(2,data),
         ],
         style={"margin-left": "1.8rem",},
     )
@@ -402,7 +432,7 @@ app.layout = html.Div(
         dcc.Interval(
             id="interval-component",
             interval=2 * 1000,  # in milliseconds
-            n_intervals=50,  # start at batch 50
+            n_intervals=0,  # start at batch 50
             disabled=True,
         ),
         html.Div(
@@ -422,10 +452,11 @@ app.layout = html.Div(
 @app.callback(
     [Output("app-content", "children"), Output("interval-component", "n_intervals")],
     [Input("app-tabs", "value")],
-    [State("n-interval-stage", "data")],
+    [State("n-interval-stage", "data"),
+     State("value-setter-store","data")],
 )
 
-def render_tab_content(tab_switch, stopped_interval):
+def render_tab_content(tab_switch, stopped_interval,data):
     if tab_switch == "tab1":
         return  html.Div(
             className="content-tile",
@@ -435,13 +466,13 @@ def render_tab_content(tab_switch, stopped_interval):
         html.Div(
             id="status-container",
             children=[
-                build_quick_stats_panel(),
+                build_quick_stats_panel(data),
                 html.Div(
                     id="graphs-container",
-                    children=[build_top_panel(), build_chart_panel()],
+                    children=[build_top_panel(data), build_chart_panel(data)],
                 ),
+                
                 html.Div(
-                    id="tweets",
                     className = "content-tile",
                     style={ "width":        "25%",
                             "margin-left": "0.8rem",
@@ -451,9 +482,17 @@ def render_tab_content(tab_switch, stopped_interval):
                             "max-width": "25%",
                     },
                     children=[
-                        build_relevant_tweets(caja_init,date1,date2),
-                    ],
-                        
+                        dcc.Loading(
+                            children=[
+                                html.Div(id="tweets",
+                                         children=[build_relevant_tweets(data)]
+                                        )
+                            ],
+                        type="default",
+                        color='#324d67ad',
+                        style={"margin":"auto"},
+                        ),
+                    ],      
                 ),
             ],
         ),
@@ -472,8 +511,8 @@ def plot_wordcloud(data): #crea wordcloud
 
 
 
-def generate_bar(df_tweets, cajas, date_init, date_end): # genera grafica de barras de sentimiento
-    df_bar=sentiment_summary(df_tweets, cajas, date_init, date_end)
+def generate_bar(data): # genera grafica de barras de sentimiento
+    df_bar=sentiment_summary(data)
     total=df_bar['count'].sum()
     y_positive=round(df_bar.loc['Positive'].values[0]/total, 2)
     y_negative=round(df_bar.loc['Negative'].values[0]/total, 2)
@@ -492,8 +531,8 @@ def generate_bar(df_tweets, cajas, date_init, date_end): # genera grafica de bar
     return fig
 
 
-def generate_line(df_tweets, cajas, date_init, date_end): # genera grafica de tiempo
-    df_line=month_summary(df_tweets, cajas, date_init, date_end)
+def generate_line(data): # genera grafica de tiempo
+    df_line=month_summary(data)
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df_line.index, y=df_line.Positivo,
                              mode='lines',
@@ -522,35 +561,29 @@ def generate_line(df_tweets, cajas, date_init, date_end): # genera grafica de ti
 #Grafica de barras!
 @app.callback(
     Output(component_id='bar-graph', component_property='figure'),
-    [Input(component_id='check_caja', component_property='value'),
-     Input('my-date-picker-range', 'start_date'),
-     Input('my-date-picker-range', 'end_date')]
+    [Input('value-setter-store','data')]
 )
-def update_output(input_value, start_date,end_date ):
-    return generate_bar(df,input_value,start_date,end_date )
+def update_output(data):
+    return generate_bar(data)
 
 
 #Grafica de lineas!
 @app.callback(
     Output(component_id='line-graph', component_property='figure'),
-    [Input(component_id='check_caja', component_property='value'),
-     Input('my-date-picker-range', 'start_date'),
-     Input('my-date-picker-range', 'end_date')]
+    [Input('value-setter-store','data')]
 )
-def update_output(input_value,start_date,end_date):
-    return generate_line(df,input_value,start_date,end_date)
+def update_output(data):
+    return generate_line(data)
 
 
 #wordcloud
 @app.callback(
     Output('image_wc', 'src'), 
     [Input('image_wc', 'id'), 
-     Input(component_id='check_caja', component_property='value'),
-     Input('my-date-picker-range', 'start_date'),
-     Input('my-date-picker-range', 'end_date')]
+     Input('value-setter-store','data')],
 )
-def make_image(b, input_value, start_date, end_date): #genera la imagen del wordcloud
-    df_temp=filter_df(df, input_value, start_date, end_date)
+def make_image(b, data): #genera la imagen del wordcloud
+    df_temp=filter_df(data)
     df_wc= ''.join(df_temp.clean_text_to_word)
     img = BytesIO()
     plot_wordcloud(data=df_wc).save(img, format='PNG')
@@ -559,47 +592,50 @@ def make_image(b, input_value, start_date, end_date): #genera la imagen del word
 #tweets
 @app.callback(
     Output(component_id='tweets', component_property='children'),
-    [Input(component_id='check_caja', component_property='value'),
-     Input('my-date-picker-range', 'start_date'),
-     Input('my-date-picker-range', 'end_date')]
+    [Input('value-setter-store','data')]
 )
-def update_output(input_value,start_date,end_date):
-    return build_relevant_tweets(input_value,start_date,end_date)
+def update_output(data):
+    return build_relevant_tweets(data)
 
 #quick-stats
-
-#percentage sentiment
-#@app.callback(
-#    Output(component_id='sent-perc', component_property='children'),
-#    [Input(component_id='check_caja', component_property='value')]
-#)
-#def update_output(input_value):
-#    return 
 
 #interactions
 @app.callback(
     Output(component_id='interactions', component_property='children'),
-    [Input(component_id='check_caja', component_property='value'),
-     Input('my-date-picker-range', 'start_date'),
-     Input('my-date-picker-range', 'end_date')]
+    [Input('value-setter-store','data')]
 )
-def update_output(input_value,start_date,end_date):
-    df_temp=filter_df(df, input_value, start_date, end_date)
+def update_output(data):
+    df_temp=filter_df(data)
     return str(len(df_temp))
 
 #users
 @app.callback(
     Output(component_id='users', component_property='children'),
-    [Input(component_id='check_caja', component_property='value'),
-     Input('my-date-picker-range', 'start_date'),
-     Input('my-date-picker-range', 'end_date')]
+    [Input('value-setter-store','data')]
 )
-def update_output(input_value,start_date,end_date):
-    df_temp=filter_df(df, input_value, start_date, end_date)
+def update_output(data):
+    df_temp=filter_df(data)
     return str(len(df_temp['author_id'].unique()))
 
+#Actualizar data con la información de los fltros
+@app.callback(
+    Output('value-setter-store','data'),
+    [Input(component_id='check_caja', component_property='value'),
+     Input('my-date-picker-range', 'start_date'),
+     Input('my-date-picker-range', 'end_date'),
+     Input('search','value')],
+    [State('value-setter-store','data')]
+)
+def test(input_value,start_date,end_date,search_value,data):
+    data['check_caja']=input_value
+    data['start_date']=start_date
+    data['end_date']=end_date
+    data['query']=search_value
+    return data
+
+
 #======================================================================================================================================
-#===============================      NO ENTIENDO PARA QUE FUNCIONA!!!      ===========================================================
+#======================================================      INTERVALS      ===========================================================
 #======================================================================================================================================
 
 
@@ -619,15 +655,7 @@ def stop_production(n_clicks, current):
     return not current, "stop" if current else "start"
 
 
-# ======= Callbacks for modal popup =======
 
-def update_click_output(button_click):
-    ctx = dash.callback_context
-
-    if ctx.triggered:
-        prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    return {"display": "none"}
 
 
 
@@ -636,4 +664,4 @@ def update_click_output(button_click):
 #======================================================================================================================================
 
 if __name__ == "__main__":
-    app.run_server(debug=True, port=8050)
+    app.run_server(debug=False, port=8050)
