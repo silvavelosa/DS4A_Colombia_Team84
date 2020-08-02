@@ -1,67 +1,60 @@
-# Manufacturing SPC Dashboard
+# Twitter Sentiment Analysis for SuperSociedades
 
-## Introduction
-`Dash-manufacture-spc-dashboard` is a dashboard for monitoring real-time process quality along manufacture production line. 
-This is a demo of Dash interactive Python framework developed by [Plotly](https//plot.ly/).
+Final project for DS4A program July 2020
 
-## Screenshots
-![initial](img/screencapture2.png)
-
-![initial](img/screencapture1.png)
+Author : Team 84
 
 
-## Built With
-* [Dash](https://dash.plot.ly/) - Main server and interactive components 
-* [Plotly Python](https://plot.ly/python/) - Used to create the interactive plots
-* [Dash DAQ](https://dash.plot.ly/dash-daq) - Styled technical components for industrial applications
+## INSTALLATION
 
-## Requirements
-We suggest you to create a separate virtual environment running Python 3 for this app, and install all of the required dependencies there. Run in Terminal/Command Prompt:
+It's as simple as : 
 
-```
-git clone https://github.com/plotly/dash-sample-apps.git
-cd dash-sample-apps/apps/dash-manufacture-spc-dashboard/
-python3 -m virtualenv venv
-```
-In UNIX system: 
+1/ Open terminal
 
-```
-source venv/bin/activate
-```
-In Windows: 
+2/ Run 'pip install r- requirements.txt'
 
-```
-venv\Scripts\activate
-```
+3/ Run 'python -m spacy download es_core_news_lg'
 
-To install all of the required packages to this environment, simply run:
+4/ Run 'python app.py'
 
-```
-pip install -r requirements.txt
-```
-
-and all of the required `pip` packages, will be installed, and the app will be able to run.
+5/ Open dash app in your browser
 
 
-## How to use this app
+## DASHBOARD
 
-Run this app locally by:
-```
-python app.py
-```
-Open http://0.0.0.0:8050/ in your browser, you will see a live-updating dashboard.
+In DAsh APP the user can see how the sentiment classification from the tweets selected, if it changes through time and the classification of the most relevant tweets. There is a posibility to filter the base of tweets by company, date or key words.
 
-Click on **Learn more** button to learn more about how this app works.
+![initial](img/screencapture.png)
 
-## What does this app show
+## THE DATA
 
-Click on buttons in `Parameter` column to visualize details of trendline on the bottom panel.
+Collection of tweets where 3 major 'cajas de compensación' where mentioned from 01/01/207 to date. 
+There is a preprocessing for cleaning the text before running the sentiment analysisi model.
 
-Click `Start` button, trends are updated every two seconds to simulate real-time measurements. The Sparkline on top panel and Control chart on bottom panel show Shewhart process control using mock data. Data falling outside of control limit are signals indicating 'Out of Control(OOC)', and will 
-trigger alerts instantly for a detailed checkup. 
 
-Operators may stop measurement by clicking `Stop` button, and edit specification parameters for selected process line(metrics) in Specification Tab.
+## THE MODEL
 
-## Resources and references
-* [Shewhart statistical process control](https://en.wikipedia.org/wiki/Shewhart_individuals_control_chart)
-* [Dash User Guide](https://dash.plot.ly/)
+For classifying sentiment we are using the model ScentiPy found at: https://github.com/aylliote/senti-py
+
+##### The model is a simple pipeline that includes : 
+
+- A vectorizer : go from the text/string representation of the comment to a vectorized representation.
+				This is done with a TfIdfVectorizer
+- A feature Selector : The vectorizer will output a n_samples*n_features very sparse matrix (scipy sparse 					matrices are already used by the sklean algorithm). This will reduce the number n_features, 				checking weather a feature is relevant or not.
+- A classifier : The model used is a Multinomial Naive Bayes, which performs really well for text 
+				classification.
+
+The parameters and hyper-parameters of this pipeline are found by the use of a GridSearch K - cross validation with K = 10
+
+##### The model is fed data crawled from various websites : 
+
+-Trip Advisor
+-PedidosYa
+-Apestan
+-QuejasOnline
+-MercadoLibre
+-SensaCine
+-OpenCine
+-TASS
+-Twitter
+
