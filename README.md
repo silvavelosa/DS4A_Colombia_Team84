@@ -24,12 +24,13 @@ It's as simple as :
 
 In DAsh APP the user can see how the sentiment classification from the tweets selected, if it changes through time and the classification of the most relevant tweets. There is a posibility to filter the base of tweets by company, date or key words.
 
-![initial](img/screencapture.png)
+![initial](data/screenshot.png)
 
 ## THE DATA
 
 Collection of tweets where 3 major 'cajas de compensación' where mentioned from 01/01/207 to date. 
-There is a preprocessing for cleaning the text before running the sentiment analysisi model.
+There is a preprocessing for cleaning the text before running the sentiment analysis model.
+All these steps are done with the code: script_final_modelo.py
 
 
 ## THE MODEL
