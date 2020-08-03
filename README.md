@@ -4,10 +4,11 @@ Final project for DS4A program July 2020
 
 Author : Team 84
 
+The dashboard is accessible through: http://jaimesub.dns-cloud.net:8050/ 
 
 ## INSTALLATION
 
-It's as simple as : 
+If ou want to run the model and the dash app it's as simple as : 
 
 1/ Open terminal
 
